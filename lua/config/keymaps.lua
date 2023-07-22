@@ -18,10 +18,15 @@ end
 
 if vim.g.vscode then
     -- VSCode extension
-    -- vim.cmd('source ' .. vim.fn.stdpath('config') .. '\\vim\\vscode-neovim.vim')
+    vim.cmd('source ' .. vim.fn.stdpath('config') .. '\\vim\\vscode-neovim.vim')
 else
     -- ordinary Neovim
 end
 
 map("n", "cL", "vg_c", { desc = "Change till line end" })
-map("n", "<leader>gd", "<Cmd>call VSCodeNotify('editor.action.revealDefinitionAside')<CR>", { desc = "Go to definition aside" })
+
+-- Move to window using the <ctrl> hjkl keys
+map("n", "<C-h>", "<C-w>h", { desc = "Go to left window", remap = true })
+map("n", "<C-j>", "<C-w>j", { desc = "Go to lower window", remap = true })
+map("n", "<C-k>", "<C-w>k", { desc = "Go to upper window", remap = true })
+map("n", "<C-l>", "<C-w>l", { desc = "Go to right window", remap = true })
