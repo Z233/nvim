@@ -33,3 +33,5 @@ map("n", "<C-l>", "<C-w>l", { desc = "Go to right window", remap = true })
 
 -- ESLint: Fix all auto-fixable Problems
 map("n", "<leader>ef", '<Cmd>call VSCodeNotify("eslint.executeAutofix")<CR>', { desc = "ESLint: Fix all auto-fixable Problems" })
+
+map("n", "gl", '<Cmd>call VSCodeNotify("editor.action.goToTypeDefinition")<CR>', { desc = "Go to Type Definition" })
