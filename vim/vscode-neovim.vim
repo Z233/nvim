@@ -10,6 +10,8 @@ let &runtimepath = &runtimepath . ',' . s:luaPath
 
 " Used to execute vscode command
 let s:vscodeCommandEventName = 'vscode-command'
+" Used to execute vscode command with some range (the specified range will be selected and the command will be executed on this range)
+let s:vscodeRangeCommandEventName = 'vscode-range-command'
 " Used for externsion inter-communications
 let s:vscodePluginEventName = 'vscode-neovim'
 
@@ -23,6 +25,22 @@ function! VSCodeNotify(cmd, ...)
     call rpcnotify(g:vscode_channel, s:vscodeCommandEventName, a:cmd, a:000)
 endfunction
 
+function! VSCodeCallRange(cmd, line1, line2, leaveSelection, ...) abort
+    call rpcrequest(g:vscode_channel, s:vscodeRangeCommandEventName, a:cmd, a:line1, a:line2, 0, 0, a:leaveSelection, a:000)
+endfunction
+
+function! VSCodeNotifyRange(cmd, line1, line2, leaveSelection, ...)
+    call rpcnotify(g:vscode_channel, s:vscodeRangeCommandEventName, a:cmd, a:line1, a:line2, 0, 0, a:leaveSelection, a:000)
+endfunction
+
+function! VSCodeCallRangePos(cmd, line1, line2, pos1, pos2, leaveSelection, ...) abort
+    call rpcrequest(g:vscode_channel, s:vscodeRangeCommandEventName, a:cmd, a:line1, a:line2, a:pos1, a:pos2, a:leaveSelection, a:000)
+endfunction
+
+function! VSCodeNotifyRangePos(cmd, line1, line2, pos1, pos2, leaveSelection, ...)
+    call rpcnotify(g:vscode_channel, s:vscodeRangeCommandEventName, a:cmd, a:line1, a:line2, a:pos1, a:pos2, a:leaveSelection, a:000)
+endfunction
+
 function! VSCodeExtensionCall(cmd, ...) abort
     call rpcrequest(g:vscode_channel, s:vscodePluginEventName, a:cmd, a:000)
 endfunction
@@ -31,20 +49,45 @@ function! VSCodeExtensionNotify(cmd, ...)
     call rpcnotify(g:vscode_channel, s:vscodePluginEventName, a:cmd, a:000)
 endfunction
 
-function! VSCodeCallRange(cmd, line1, line2, leaveSelection, ...) abort
-    call VSCodeExtensionCall('range-command', a:cmd, 'V', a:line1, a:line2, 1, 1, a:leaveSelection, a:000)
+function! s:fixVisualPos(startPos, endPos)
+    if (a:startPos[1] == a:endPos[1] && a:startPos[2] > a:endPos[2]) || a:startPos[1] > a:endPos[1]
+        let a:startPos[2] = a:startPos[2] + 1
+    else
+        let a:endPos[2] = a:endPos[2] + 1
+    endif
+    return [a:startPos, a:endPos]
 endfunction
 
-function! VSCodeNotifyRange(cmd, line1, line2, leaveSelection, ...)
-    call VSCodeExtensionNotify('range-command', a:cmd, 'V', a:line1, a:line2, 1, 1, a:leaveSelection, a:000)
+function! VSCodeCallVisual(cmd, leaveSelection, ...) abort
+    let mode = mode()
+    if mode ==# 'V'
+        let startLine = line('v')
+        let endLine = line('.')
+        call VSCodeCallRange(a:cmd, startLine, endLine, a:leaveSelection, a:000)
+    elseif mode ==# 'v' || mode ==# "\<C-v>"
+        let startPos = getpos('v')
+        let endPos = getpos('.')
+        let [startPos, endPos] = s:fixVisualPos(startPos, endPos)
+        call VSCodeCallRangePos(a:cmd, startPos[1], endPos[1], startPos[2], endPos[2], a:leaveSelection, a:000)
+    else
+        call VSCodeCall(a:cmd, a:000)
+    endif
 endfunction
 
-function! VSCodeCallRangePos(cmd, line1, line2, pos1, pos2, leaveSelection, ...) abort
-    call VSCodeExtensionCall('range-command', a:cmd, 'v', a:line1, a:line2, a:pos1, a:pos2, a:leaveSelection, a:000)
-endfunction
-
-function! VSCodeNotifyRangePos(cmd, line1, line2, pos1, pos2, leaveSelection, ...)
-    call VSCodeExtensionNotify('range-command', a:cmd, 'v', a:line1, a:line2, a:pos1, a:pos2, a:leaveSelection, a:000)
+function! VSCodeNotifyVisual(cmd, leaveSelection, ...)
+    let mode = mode()
+    if mode ==# 'V'
+        let startLine = line('v')
+        let endLine = line('.')
+        call VSCodeNotifyRange(a:cmd, startLine, endLine, a:leaveSelection, a:000)
+    elseif mode ==# 'v' || mode ==# "\<C-v>"
+        let startPos = getpos('v')
+        let endPos = getpos('.')
+        let [startPos, endPos] = s:fixVisualPos(startPos, endPos)
+        call VSCodeNotifyRangePos(a:cmd, startPos[1], endPos[1], startPos[2], endPos[2], a:leaveSelection, a:000)
+    else
+        call VSCodeNotify(a:cmd, a:000)
+    endif
 endfunction
 
 " Called from extension when opening/creating new file in vscode to reset undo tree
@@ -56,6 +99,11 @@ function! VSCodeClearUndo(bufId)
     unlet oldlevels
 endfunction
 
+
+" Set text decorations for given ranges. Used in easymotion
+function! VSCodeSetTextDecorations(hlName, rowsCols)
+    call VSCodeExtensionNotify('text-decorations', a:hlName, a:rowsCols)
+endfunction
 
 " This is called by extension when created new buffer
 function! s:onBufEnter(name, id)
@@ -89,6 +137,7 @@ endfunction
 
 " Load altercmd first
 execute 'source ' . s:currDir . '/vim-altercmd/plugin/altercmd.vim'
+execute 'source ' . s:currDir . '/vscode-insert.vim'
 execute 'source ' . s:currDir . '/vscode-scrolling.vim'
 execute 'source ' . s:currDir . '/vscode-jumplist.vim'
 execute 'source ' . s:currDir . '/vscode-code-actions.vim'
@@ -108,12 +157,10 @@ augroup VscodeGeneral
     " Looks like external windows are coming with "set wrap" set automatically, disable them
     " autocmd WinNew,WinEnter * :set nowrap
     autocmd WinScrolled * call VSCodeExtensionNotify('window-scroll', win_getid(), winsaveview())
-    autocmd ModeChanged * call VSCodeExtensionNotify('mode-changed', v:event.new_mode)
-    " LazyVim will clear runtimepath by default. To avoid user intervention, we need to set it again.
-    autocmd User LazyDone let &runtimepath = &runtimepath . ',' . s:luaPath
+    autocmd ModeChanged * call VSCodeExtensionNotify('mode-changed', v:event.old_mode, v:event.new_mode)
 augroup END
 
 
 lua << EOF
-require("vscode-neovim").setup()
+require("vscode")
 EOF
