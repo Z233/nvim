@@ -18,7 +18,6 @@ end
 
 if vim.g.vscode then
     -- VSCode extension
-    vim.cmd('source ' .. vim.fn.stdpath('config') .. '\\vim\\vscode-neovim.vim')
 else
     -- ordinary Neovim
 end
