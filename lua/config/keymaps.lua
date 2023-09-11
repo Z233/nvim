@@ -39,9 +39,8 @@ map("n", "<C-j>", "<C-w>j", { desc = "Go to lower window", remap = true })
 map("n", "<C-k>", "<C-w>k", { desc = "Go to upper window", remap = true })
 map("n", "<C-l>", "<C-w>l", { desc = "Go to right window", remap = true })
 
--- ESLint: Fix all auto-fixable Problems
 map("n", "<leader>ef", '<Cmd>call VSCodeNotify("eslint.executeAutofix")<CR>', { desc = "ESLint: Fix all auto-fixable Problems" })
-
 map("n", "gl", '<Cmd>call VSCodeNotify("editor.action.goToTypeDefinition")<CR>', { desc = "Go to Type Definition" })
+map("v", "<leader>cf", '<Cmd>call VSCodeNotify("editor.action.formatSelection")<CR>', { desc = "Format selection" } )
 
 map("n", "<A-c>", '<Cmd>call VSCodeNotify("workbench.files.action.showActiveFileInExplorer")<CR>')
