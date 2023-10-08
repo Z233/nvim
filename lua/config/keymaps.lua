@@ -22,6 +22,14 @@ else
     -- ordinary Neovim
 end
 
+-- nvim-splider
+
+map({"n", "o", "x"}, "w", "<cmd>lua require('spider').motion('w')<CR>", { desc = "Spider-w" })
+map({"n", "o", "x"}, "e", "<cmd>lua require('spider').motion('e')<CR>", { desc = "Spider-e" })
+map({"n", "o", "x"}, "b", "<cmd>lua require('spider').motion('b')<CR>", { desc = "Spider-b" })
+map({"n", "o", "x"}, "ge", "<cmd>lua require('spider').motion('ge')<CR>", { desc = "Spider-ge" })
+
+
 map("n", "cL", "cg_", { desc = "Change till line end" })
 map("n", "vL", "vg_", { desc = "Visual till line end" })
 map("n", "dL", "dg_", { desc = "Delete till line end" })
@@ -40,8 +48,8 @@ map("n", "<C-k>", "<C-w>k", { desc = "Go to upper window", remap = true })
 map("n", "<C-l>", "<C-w>l", { desc = "Go to right window", remap = true })
 
 map("n", "<leader>ef", '<Cmd>call VSCodeNotify("eslint.executeAutofix")<CR>', { desc = "ESLint: Fix all auto-fixable Problems" })
+map("v", "<leader>f", '<Cmd>call VSCodeNotify("editor.action.formatSelection")<CR>', { desc = "Format selection" } )
 map("n", "gl", '<Cmd>call VSCodeNotify("editor.action.goToTypeDefinition")<CR>', { desc = "Go to Type Definition" })
-map("v", "<leader>cf", '<Cmd>call VSCodeNotify("editor.action.formatSelection")<CR>', { desc = "Format selection" } )
 
 map("n", "<A-c>", '<Cmd>call VSCodeNotify("workbench.files.action.showActiveFileInExplorer")<CR>')
 
