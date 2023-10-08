@@ -44,3 +44,9 @@ map("n", "gl", '<Cmd>call VSCodeNotify("editor.action.goToTypeDefinition")<CR>',
 map("v", "<leader>cf", '<Cmd>call VSCodeNotify("editor.action.formatSelection")<CR>', { desc = "Format selection" } )
 
 map("n", "<A-c>", '<Cmd>call VSCodeNotify("workbench.files.action.showActiveFileInExplorer")<CR>')
+
+map("n", "gr", '<Cmd>call VSCodeNotify("editor.action.goToReferences")<CR>', { desc = "Go to references" })
+
+map({'n', 'v'}, "<leader>cl", '<Cmd>call VSCodeNotify("turboConsoleLog.displayLogMessage")<CR>', { desc = "Turbo Console Log: Display Log Message" } )
+
+map("n", "<leader>cr", '<Cmd>call VSCodeNotify("editor.action.rename")<CR>')
