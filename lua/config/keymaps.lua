@@ -64,5 +64,4 @@ map({'n', 'v'}, "[l", '<Cmd>call VSCodeNotify("editor.action.marker.prevInFiles"
 
 map('n', 'gb', 'mciw*<Cmd>nohl<CR>', { remap = true })
 
-map('n', '<leader>p', ':PastePlainText p<CR>', { noremap = true, silent = true })
-map('n', '<leader>P', ':PastePlainText P<CR>', { noremap = true, silent = true })
+map({'n', 'v'}, '<leader>p', '<Cmd>ParseClipboardToPlainText<CR>p', { noremap = true, silent = true })
