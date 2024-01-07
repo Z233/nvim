@@ -44,5 +44,9 @@ return {
     config = function(_, _)
       require("mini.surround").setup({})
     end,
+  },
+  {
+    "mattn/emmet-vim", 
+    vscode = true
   }
 }
