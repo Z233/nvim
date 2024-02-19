@@ -58,7 +58,8 @@ map("n", "gr", '<Cmd>call VSCodeNotify("editor.action.goToReferences")<CR>', { d
 map({'n', 'v'}, "<leader>cl", '<Cmd>call VSCodeNotify("turboConsoleLog.displayLogMessage")<CR>', { desc = "Turbo Console Log: Display Log Message" } )
 
 map("n", "<leader>cr", '<Cmd>call VSCodeNotify("editor.action.rename")<CR>')
-map("n", "<leader>cd", '<Cmd>call VSCodeNotify("comment-divider.makeMainHeader")<CR>')
+map("n", "<leader>cd", '<Cmd>call VSCodeNotify("comment-divider.insertSolidLine")<CR>')
+map("n", "<leader>cm", '<Cmd>call VSCodeNotify("comment-divider.makeMainHeader")<CR>')
 
 map({'n', 'v'}, "]l", '<Cmd>call VSCodeNotify("editor.action.marker.nextInFiles")<CR>', { desc = "Go to Next Problem in Files (Error, Warning, Info)" } )
 map({'n', 'v'}, "[l", '<Cmd>call VSCodeNotify("editor.action.marker.prevInFiles")<CR>', { desc = "Go to Previous Problem in Files (Error, Warning, Info)" } )
