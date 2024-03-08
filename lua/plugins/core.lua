@@ -62,7 +62,9 @@ return {
       return vim.list_extend(mappings, keys)
     end,
     config = function(_, _)
-      require("mini.surround").setup({})
+      require("mini.surround").setup({
+        n_lines = 50
+      })
     end,
   },
   {
