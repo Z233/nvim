@@ -22,8 +22,6 @@ else
     -- ordinary Neovim
 end
 
--- nvim-splider
-
 map({"n", "o", "x"}, "w", "<cmd>lua require('spider').motion('w')<CR>", { desc = "Spider-w" })
 map({"n", "o", "x"}, "e", "<cmd>lua require('spider').motion('e')<CR>", { desc = "Spider-e" })
 map({"n", "o", "x"}, "b", "<cmd>lua require('spider').motion('b')<CR>", { desc = "Spider-b" })
@@ -47,19 +45,33 @@ map("n", "<C-j>", "<C-w>j", { desc = "Go to lower window", remap = true })
 map("n", "<C-k>", "<C-w>k", { desc = "Go to upper window", remap = true })
 map("n", "<C-l>", "<C-w>l", { desc = "Go to right window", remap = true })
 
+-- Code Actions
+
 map("n", "<leader>ef", '<Cmd>call VSCodeNotify("eslint.executeAutofix")<CR>', { desc = "ESLint: Fix all auto-fixable Problems" })
 map("v", "<leader>f", '<Cmd>call VSCodeNotify("editor.action.formatSelection")<CR>', { desc = "Format selection" } )
+
 map("n", "gl", '<Cmd>call VSCodeNotify("editor.action.goToTypeDefinition")<CR>', { desc = "Go to Type Definition" })
+
+map("n", "<leader>cr", '<Cmd>call VSCodeNotify("editor.action.rename")<CR>')
+map("n", "<leader>cd", '<Cmd>call VSCodeNotify("comment-divider.insertSolidLine")<CR>')
+map("n", "<leader>cm", '<Cmd>call VSCodeNotify("comment-divider.makeMainHeader")<CR>')
+
+
+local function goToTypeDefinitionAside()
+  local vscode = require('vscode-neovim')
+  vscode.call('editor.action.goToTypeDefinition')
+  vscode.call('workbench.action.moveEditorToRightGroup')
+end
+
+map("n", "<C-w>gl", goToTypeDefinitionAside)
+
+--
 
 map("n", "<A-c>", '<Cmd>call VSCodeNotify("workbench.files.action.showActiveFileInExplorer")<CR>')
 
 map("n", "gr", '<Cmd>call VSCodeNotify("editor.action.goToReferences")<CR>', { desc = "Go to references" })
 
 map({'n', 'v'}, "<leader>cl", '<Cmd>call VSCodeNotify("turboConsoleLog.displayLogMessage")<CR>', { desc = "Turbo Console Log: Display Log Message" } )
-
-map("n", "<leader>cr", '<Cmd>call VSCodeNotify("editor.action.rename")<CR>')
-map("n", "<leader>cd", '<Cmd>call VSCodeNotify("comment-divider.insertSolidLine")<CR>')
-map("n", "<leader>cm", '<Cmd>call VSCodeNotify("comment-divider.makeMainHeader")<CR>')
 
 map({'n', 'v'}, "]l", '<Cmd>call VSCodeNotify("editor.action.marker.nextInFiles")<CR>', { desc = "Go to Next Problem in Files (Error, Warning, Info)" } )
 map({'n', 'v'}, "[l", '<Cmd>call VSCodeNotify("editor.action.marker.prevInFiles")<CR>', { desc = "Go to Previous Problem in Files (Error, Warning, Info)" } )
