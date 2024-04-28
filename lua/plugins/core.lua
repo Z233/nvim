@@ -1,5 +1,5 @@
 return {
- {
+  {
     "LazyVim/LazyVim",
     opts = {
       defaults = {
@@ -42,7 +42,7 @@ return {
     end,
   },
   {
-    "chrisgrieser/nvim-spider", 
+    "chrisgrieser/nvim-spider",
     lazy = true,
     vscode = true
   },
@@ -52,7 +52,7 @@ return {
     event = "BufRead",
     keys = function(_, keys)
       local mappings = {
-        { "sa", desc = "Add surrounding", mode = { "n", "v" } },
+        { "sa", desc = "Add surrounding",       mode = { "n", "v" } },
         { "sd", desc = "Delete surrounding" },
         { "sf", desc = "Find right surrounding" },
         { "sF", desc = "Find left surrounding" },
@@ -63,16 +63,21 @@ return {
     end,
     config = function(_, _)
       require("mini.surround").setup({
-        n_lines = 50
+        n_lines = 200,
+        custom_surroundings = {
+          t = {
+            input = { "<([%p%w]-)%f[^<%w][^<>]->.-</%1>", "^<.->().*()</[^/]->$" },
+          },
+        },
       })
     end,
   },
   {
-    "mattn/emmet-vim", 
+    "mattn/emmet-vim",
     vscode = true
   },
   {
     "tpope/vim-abolish",
-    vscode = true 
+    vscode = true
   }
 }

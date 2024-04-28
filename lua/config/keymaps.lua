@@ -40,12 +40,13 @@ map("n", "yH", "yg0", { desc = "Yank till line start" })
 -- map("o", "L", "g_", { desc: "Move to end of line" });
 
 -- Move to window using the <ctrl> hjkl keys
+
 map("n", "<C-h>", "<C-w>h", { desc = "Go to left window", remap = true })
 map("n", "<C-j>", "<C-w>j", { desc = "Go to lower window", remap = true })
 map("n", "<C-k>", "<C-w>k", { desc = "Go to upper window", remap = true })
 map("n", "<C-l>", "<C-w>l", { desc = "Go to right window", remap = true })
 
--- Code Actions
+-- #region Code Actions
 
 map("n", "<leader>ef", '<Cmd>call VSCodeNotify("eslint.executeAutofix")<CR>', { desc = "ESLint: Fix all auto-fixable Problems" })
 map("v", "<leader>f", '<Cmd>call VSCodeNotify("editor.action.formatSelection")<CR>', { desc = "Format selection" } )
@@ -56,6 +57,14 @@ map("n", "<leader>cr", '<Cmd>call VSCodeNotify("editor.action.rename")<CR>')
 map("n", "<leader>cd", '<Cmd>call VSCodeNotify("comment-divider.insertSolidLine")<CR>')
 map("n", "<leader>cm", '<Cmd>call VSCodeNotify("comment-divider.makeMainHeader")<CR>')
 
+local function  goToImplementationAside()
+  local vscode = require('vscode-neovim')
+  vscode.call('editor.action.goToImplementation')
+  vscode.call('workbench.action.moveEditorToRightGroup')
+end
+
+map("n", "gi", '<Cmd>call VSCodeNotify("editor.action.goToImplementation")<CR>')
+map("n", "<C-w>gi", goToImplementationAside)
 
 local function goToTypeDefinitionAside()
   local vscode = require('vscode-neovim')
@@ -65,7 +74,7 @@ end
 
 map("n", "<C-w>gl", goToTypeDefinitionAside)
 
---
+-- #endregion
 
 map("n", "<A-c>", '<Cmd>call VSCodeNotify("workbench.files.action.showActiveFileInExplorer")<CR>')
 
@@ -76,6 +85,10 @@ map({'n', 'v'}, "<leader>cl", '<Cmd>call VSCodeNotify("turboConsoleLog.displayLo
 map({'n', 'v'}, "]l", '<Cmd>call VSCodeNotify("editor.action.marker.nextInFiles")<CR>', { desc = "Go to Next Problem in Files (Error, Warning, Info)" } )
 map({'n', 'v'}, "[l", '<Cmd>call VSCodeNotify("editor.action.marker.prevInFiles")<CR>', { desc = "Go to Previous Problem in Files (Error, Warning, Info)" } )
 
+-- #region vscode-multi-cursor
+
 map({'n', 'v'}, 'gb', 'mciw*<Cmd>nohl<CR>', { remap = true })
+
+-- #endregion
 
 map({'n', 'v'}, '<leader>p', '<Cmd>ParseClipboardToPlainText<CR>p', { noremap = true, silent = true })
