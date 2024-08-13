@@ -5,7 +5,7 @@ require("config.lazy")
 
 local function parse_clipboard_to_plain_text()
     local clipboard_content = vim.fn.getreg('+')
-    local processed_content = clipboard_content:gsub("%s+", "")
+    local processed_content = clipboard_content:match("^%s*(.-)%s*$")
     vim.fn.setreg('*', processed_content)
     vim.fn.setreg('+', processed_content)
 end
