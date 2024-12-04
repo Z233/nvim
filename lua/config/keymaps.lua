@@ -92,3 +92,11 @@ map({'n', 'v'}, 'gb', 'mciw*<Cmd>nohl<CR>', { remap = true })
 -- #endregion
 
 map({'n', 'v'}, '<leader>p', '<Cmd>ParseClipboardToPlainText<CR>p', { noremap = true, silent = true })
+
+-- Git
+
+map("n", "<leader>gi", '<Cmd>call VSCodeNotify("merge-conflict.accept.incoming")<CR>', { desc = 'Merge Conflict: Accept Incoming' })
+map("n", "<leader>gc", '<Cmd>call VSCodeNotify("merge-conflict.accept.current")<CR>', { desc = 'Merge Conflict: Accept Current' })
+map("n", "<leader>gb", '<Cmd>call VSCodeNotify("merge-conflict.accept.both")<CR>', { desc = 'Merge Conflict: Accept Both' })
+
+-- 
