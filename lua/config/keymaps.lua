@@ -42,37 +42,39 @@ map("n", "<C-l>", "<C-w>l", { desc = "Go to right window", remap = true })
 map({ "n", "v" }, "<leader>p", "<Cmd>ParseClipboardToPlainText<CR>p", { noremap = true, silent = true })
 
 if vim.g.vscode then
+  local vscode = require("vscode-neovim")
+  
+  -- VSCode specific keymap helper function
+  local function vmap(mode, lhs, command, opts)
+    opts = opts or {}
+    opts.silent = opts.silent ~= false
+    vim.keymap.set(mode, lhs, function()
+      vscode.call(command)
+    end, opts)
+  end
+
   -- #region Code Actions
 
-  map(
-    "n",
-    "<leader>ef",
-    '<Cmd>call VSCodeNotify("eslint.executeAutofix")<CR>',
-    { desc = "ESLint: Fix all auto-fixable Problems" }
-  )
-  map("v", "<leader>f", '<Cmd>call VSCodeNotify("editor.action.formatSelection")<CR>', { desc = "Format selection" })
+  vmap("n", "<leader>ef", "eslint.executeAutofix", { desc = "ESLint: Fix all auto-fixable Problems" })
+  vmap("v", "<leader>f", "editor.action.formatSelection", { desc = "Format selection" })
+  vmap("n", "gl", "editor.action.goToTypeDefinition", { desc = "Go to Type Definition" })
+  vmap("n", "<leader>cr", "editor.action.rename")
+  vmap("n", "<leader>cd", "comment-divider.insertSolidLine")
+  vmap("n", "<leader>cm", "comment-divider.makeMainHeader")
 
-  map("n", "gl", '<Cmd>call VSCodeNotify("editor.action.goToTypeDefinition")<CR>', { desc = "Go to Type Definition" })
-
-  map("n", "<leader>cr", '<Cmd>call VSCodeNotify("editor.action.rename")<CR>')
-  map("n", "<leader>cd", '<Cmd>call VSCodeNotify("comment-divider.insertSolidLine")<CR>')
-  map("n", "<leader>cm", '<Cmd>call VSCodeNotify("comment-divider.makeMainHeader")<CR>')
-
+  -- Complex VSCode functions that need direct vscode.call
   local function goToImplementationAside()
-    local vscode = require("vscode-neovim")
     vscode.call("editor.action.goToImplementation")
     vscode.call("workbench.action.moveEditorToRightGroup")
   end
 
-  map("n", "gi", '<Cmd>call VSCodeNotify("editor.action.goToImplementation")<CR>')
-  map("n", "<C-w>gi", goToImplementationAside)
-
   local function goToTypeDefinitionAside()
-    local vscode = require("vscode-neovim")
     vscode.call("editor.action.goToTypeDefinition")
     vscode.call("workbench.action.moveEditorToRightGroup")
   end
 
+  vmap("n", "gi", "editor.action.goToImplementation")
+  map("n", "<C-w>gi", goToImplementationAside)
   map("n", "<C-w>gl", goToTypeDefinitionAside)
 
   -- map("n", "<C-w>gd", '<Cmd>call VSCodeNotify("references-view.findReferences")<CR>')
@@ -81,40 +83,15 @@ if vim.g.vscode then
 
   -- Git
 
-  map(
-    "n",
-    "<leader>gi",
-    '<Cmd>call VSCodeNotify("merge-conflict.accept.incoming")<CR>',
-    { desc = "Merge Conflict: Accept Incoming" }
-  )
-
-  map(
-    "n",
-    "<leader>gc",
-    '<Cmd>call VSCodeNotify("merge-conflict.accept.current")<CR>',
-    { desc = "Merge Conflict: Accept Current" }
-  )
-
-  map(
-    "n",
-    "<leader>gb",
-    '<Cmd>call VSCodeNotify("merge-conflict.accept.both")<CR>',
-    { desc = "Merge Conflict: Accept Both" }
-  )
-
-  map(
-    { "n", "v" },
-    "<leader>gt",
-    '<Cmd>call VSCodeNotify("git.revertSelectedRanges")<CR>',
-    { desc = "Git: Revert Selected Ranges" }
-  )
-
-  --
+  vmap("n", "<leader>gi", "merge-conflict.accept.incoming", { desc = "Merge Conflict: Accept Incoming" })
+  vmap("n", "<leader>gc", "merge-conflict.accept.current", { desc = "Merge Conflict: Accept Current" })
+  vmap("n", "<leader>gb", "merge-conflict.accept.both", { desc = "Merge Conflict: Accept Both" })
+  vmap({ "n", "v" }, "<leader>gt", "git.revertSelectedRanges", { desc = "Git: Revert Selected Ranges" })
 
   -- Error Navigation
 
-  map("n", "[e", '<Cmd>call VSCodeNotify("go-to-next-error.prev.error")<CR>')
-  map("n", "]e", '<Cmd>call VSCodeNotify("go-to-next-error.next.error")<CR>')
+  vmap("n", "[e", "go-to-next-error.prev.error")
+  vmap("n", "]e", "go-to-next-error.next.error")
 
   -- #region vscode-multi-cursor
 
@@ -122,27 +99,18 @@ if vim.g.vscode then
 
   -- #endregion
 
-  map("n", "<A-c>", '<Cmd>call VSCodeNotify("workbench.files.action.showActiveFileInExplorer")<CR>')
+  vmap("n", "<A-c>", "workbench.files.action.showActiveFileInExplorer")
+  vmap("n", "gr", "editor.action.goToReferences", { desc = "Go to references" })
+  vmap({ "n", "v" }, "<leader>cl", "turboConsoleLog.displayLogMessage", { desc = "Turbo Console Log: Display Log Message" })
+  vmap({ "n", "v" }, "]l", "editor.action.marker.nextInFiles", { desc = "Go to Next Problem in Files (Error, Warning, Info)" })
+  vmap({ "n", "v" }, "[l", "editor.action.marker.prevInFiles", { desc = "Go to Previous Problem in Files (Error, Warning, Info)" })
 
-  map("n", "gr", '<Cmd>call VSCodeNotify("editor.action.goToReferences")<CR>', { desc = "Go to references" })
-
-  map(
-    { "n", "v" },
-    "<leader>cl",
-    '<Cmd>call VSCodeNotify("turboConsoleLog.displayLogMessage")<CR>',
-    { desc = "Turbo Console Log: Display Log Message" }
-  )
-
-  map(
-    { "n", "v" },
-    "]l",
-    '<Cmd>call VSCodeNotify("editor.action.marker.nextInFiles")<CR>',
-    { desc = "Go to Next Problem in Files (Error, Warning, Info)" }
-  )
-  map(
-    { "n", "v" },
-    "[l",
-    '<Cmd>call VSCodeNotify("editor.action.marker.prevInFiles")<CR>',
-    { desc = "Go to Previous Problem in Files (Error, Warning, Info)" }
-  )
+  -- Folding
+  vmap("n", "zM", "editor.foldAll", { desc = "Fold All" })
+  vmap("n", "zR", "editor.unfoldAll", { desc = "Unfold All" })
+  vmap("n", "zc", "editor.fold", { desc = "Fold" })
+  vmap("n", "zC", "editor.foldRecursively", { desc = "Fold Recursively" })
+  vmap("n", "zo", "editor.unfold", { desc = "Unfold" })
+  vmap("n", "zO", "editor.unfoldRecursively", { desc = "Unfold Recursively" })
+  vmap("n", "za", "editor.toggleFold", { desc = "Toggle Fold" })
 end
