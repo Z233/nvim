@@ -103,7 +103,7 @@ if vim.g.vscode then
   )
 
   map(
-    "n",
+    { "n", "v" },
     "<leader>gt",
     '<Cmd>call VSCodeNotify("git.revertSelectedRanges")<CR>',
     { desc = "Git: Revert Selected Ranges" }
