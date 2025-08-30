@@ -12,75 +12,124 @@ return {
     opts = function()
       local ai = require("mini.ai")
       
-      -- Helper function for self-closing JSX elements
-      local function selfclosing_region(ai_type)
+      -- Helpers for tag regions (self-closing + paired) using Tree-sitter
+      local function _get_parser()
         local ts = vim.treesitter
-        local bufnr = vim.api.nvim_get_current_buf()
+        local ok, parser = pcall(ts.get_parser, vim.api.nvim_get_current_buf())
+        if not ok then return nil end
+        local t = parser:parse()[1]
+        if not t then return nil end
+        return t:root()
+      end
 
-        -- parser for current buffer (tsx/jsx)
-        local ok, parser = pcall(ts.get_parser, bufnr)
-        if not ok or not parser then return nil end
+      local function _cursor_pos()
+        local r, c = unpack(vim.api.nvim_win_get_cursor(0))
+        return r - 1, c -- 0-based for TS
+      end
 
-        local tree = parser:parse()[1]
-        if not tree then return nil end
+      local function _region(sr, sc, er, ec)
+        -- mini.ai expects 1-based lines; end col is exclusive
+        return { from = { line = sr + 1, col = sc + 1 }, to = { line = er + 1, col = ec } }
+      end
 
-        local root = tree:root()
-        local cursor = vim.api.nvim_win_get_cursor(0)
-        local row, col = cursor[1] - 1, cursor[2]
+      local _SELF_TYPES = {
+        jsx_self_closing_element = true,
+        self_closing_tag = true,         -- html
+        xml_empty_element = true,        -- some xml grammars
+      }
 
-        -- node under cursor
-        local node = root:named_descendant_for_range(row, col, row, col)
+      local _PAIRED_TYPES = {
+        jsx_element = true,
+        element = true,                  -- html/xml
+      }
 
-        -- climb to nearest jsx_self_closing_element
-        local function up_to_selfclosing(n)
-          while n do
-            local t = n:type()
-            if t == "jsx_self_closing_element" then return n end
-            n = n:parent()
+      local _ATTR_TYPES = {
+        jsx_attribute = true,
+        jsx_spread_attribute = true,
+        attribute = true,                -- html/xml
+      }
+
+      local function _ascend_to_tag(node)
+        while node do
+          local t = node:type()
+          if _SELF_TYPES[t] or _PAIRED_TYPES[t] then return node end
+          -- If we're on an opening/start tag node, jump to its parent element
+          if t == "jsx_opening_element" and node:parent() and node:parent():type() == "jsx_element" then
+            return node:parent()
           end
-          return nil
+          if t == "start_tag" and node:parent() and node:parent():type() == "element" then
+            return node:parent()
+          end
+          node = node:parent()
         end
+        return nil
+      end
 
-        local elem = up_to_selfclosing(node)
+      local function _first_last_attr(elem)
+        local first_attr, last_attr
+        for child in elem:iter_children() do
+          if _ATTR_TYPES[child:type()] then
+            if not first_attr then first_attr = child end
+            last_attr = child
+          end
+        end
+        return first_attr, last_attr
+      end
+
+      -- Generic tag (paired or self-closing): 'a' = whole element;
+      -- 'i' = children for paired, attributes for self-closing
+      local function any_tag_region(ai_type)
+        local root = _get_parser()
+        if not root then return nil end
+        local cr, cc = _cursor_pos()
+        local node = root:named_descendant_for_range(cr, cc, cr, cc)
+        local elem = _ascend_to_tag(node)
         if not elem then return nil end
 
-        -- OUTER: full element range
-        local sr, sc, er, ec = elem:range() -- 0-based, end col exclusive
+        local t = elem:type()
+        local sr, sc, er, ec = elem:range()
 
         if ai_type == "a" then
-          return {
-            from = { line = sr + 1, col = sc + 1 },
-            to   = { line = er + 1, col = ec     },
-          }
+          return _region(sr, sc, er, ec)
         end
 
-        -- INNER: attributes only (exclude the tag name and the closing "/>")
-        -- gather attributes
-        local attrs = {}
-        for child in elem:iter_children() do
-          local ct = child:type()
-          if ct == "jsx_attribute" or ct == "jsx_spread_attribute" then
-            table.insert(attrs, child)
+        -- inner:
+        if _SELF_TYPES[t] then
+          -- for self-closing, mirror 's' behavior (attributes-only)
+          local fa, la = _first_last_attr(elem)
+          if fa and la then
+            local ar, ac, _, _ = fa:range()
+            local br, bc, wr, wc = la:range()
+            return _region(ar, ac, wr, wc)
+          else
+            local ir, ic = er, math.max(sc, ec - 2)
+            return _region(ir, ic, ir, ic)
           end
         end
 
-        if #attrs > 0 then
-          local ar, ac, zr, zc = attrs[1]:range()
-          local br, bc, wr, wc = attrs[#attrs]:range()
-          return {
-            from = { line = ar + 1, col = ac + 1 },
-            to   = { line = wr + 1, col = wc     },
-          }
-        else
-          -- no attributes: make inner a zero-length selection right after the name
-          local name = elem:field("name")[1]
-          if not name then return nil end
-          local nr, nc, er2, ec2 = name:range()
-          return {
-            from = { line = er2 + 1, col = ec2 + 1 },
-            to   = { line = er2 + 1, col = ec2 + 1 },
-          }
+        if _PAIRED_TYPES[t] then
+          -- paired: find opening and closing tags manually
+          local opening_tag, closing_tag
+          for child in elem:iter_children() do
+            local ct = child:type()
+            if ct == "jsx_opening_element" or ct == "start_tag" then
+              opening_tag = child
+            elseif ct == "jsx_closing_element" or ct == "end_tag" then
+              closing_tag = child
+            end
+          end
+          
+          if opening_tag and closing_tag then
+            local or1, oc1, or2, oc2 = opening_tag:range()
+            local cr1, cc1, _, _ = closing_tag:range()
+            return _region(or2, oc2, cr1, cc1)
+          else
+            -- Fallback: no reliable tags found
+            return nil
+          end
         end
+
+        return nil
       end
       
       return {
@@ -92,10 +141,11 @@ return {
           }, {}),
           f = ai.gen_spec.treesitter({ a = "@function.outer", i = "@function.inner" }, {}),
           c = ai.gen_spec.treesitter({ a = "@class.outer", i = "@class.inner" }, {}),
-          t = false,
+          t = function(ai_type)  -- any tag, paired or self-closing
+            return any_tag_region(ai_type)
+          end,
           b = false,
           B = false,
-          s = function(ai_type) return selfclosing_region(ai_type) end,
         },
       }
     end
