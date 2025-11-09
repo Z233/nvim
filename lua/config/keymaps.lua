@@ -44,6 +44,11 @@ map({ "n", "v" }, "<leader>p", "<Cmd>ParseClipboardToPlainText<CR>p", { noremap 
 if vim.g.vscode then
   local vscode = require("vscode-neovim")
   
+  pcall(vim.keymap.del, "n", "]d")
+  pcall(vim.keymap.del, "n", "[d")
+  pcall(vim.keymap.del, "n", "]D")
+  pcall(vim.keymap.del, "n", "[D")
+  
   -- VSCode specific keymap helper function
   local function vmap(mode, lhs, command, opts)
     opts = opts or {}
@@ -87,6 +92,12 @@ if vim.g.vscode then
   vmap("n", "<leader>gc", "merge-conflict.accept.current", { desc = "Merge Conflict: Accept Current" })
   vmap("n", "<leader>gb", "merge-conflict.accept.both", { desc = "Merge Conflict: Accept Both" })
   vmap({ "n", "v" }, "<leader>gt", "git.revertSelectedRanges", { desc = "Git: Revert Selected Ranges" })
+
+  -- Dirty Diff / Changes
+  vmap("n", "]d", "workbench.action.editor.nextChange", { desc = "Go to Next Change" })
+  vmap("n", "[d", "workbench.action.editor.previousChange", { desc = "Go to Previous Change" })
+  vmap("n", "]D", "editor.action.dirtydiff.next", { desc = "Show Next Change (inline diff)" })
+  vmap("n", "[D", "editor.action.dirtydiff.previous", { desc = "Show Previous Change (inline diff)" })
 
   -- Error Navigation
 
