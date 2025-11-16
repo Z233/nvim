@@ -210,5 +210,15 @@ return {
     lazy = false,
     dependencies = { "MunifTanjim/nui.nvim" },
     opts = {},
+  },
+  {
+    "Goose97/timber.nvim",
+    vscode = true,
+    version = "*",
+    event = "VeryLazy",
+    config = function()
+        require("timber").setup({
+        })
+    end
   }
 }

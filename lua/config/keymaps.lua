@@ -94,8 +94,11 @@ if vim.g.vscode then
   vmap({ "n", "v" }, "<leader>gt", "git.revertSelectedRanges", { desc = "Git: Revert Selected Ranges" })
 
   -- Dirty Diff / Changes
-  vmap("n", "]d", "workbench.action.editor.nextChange", { desc = "Go to Next Change" })
-  vmap("n", "[d", "workbench.action.editor.previousChange", { desc = "Go to Previous Change" })
+
+  local gitDiff = require("utils.vscode-git-diff-navigation")
+
+  map("n", "]d", gitDiff.goToNextChange, { desc = "Go to Next Change" })
+  map("n", "[d", gitDiff.goToPreviousChange, { desc = "Go to Previous Change" })
   vmap("n", "]D", "editor.action.dirtydiff.next", { desc = "Show Next Change (inline diff)" })
   vmap("n", "[D", "editor.action.dirtydiff.previous", { desc = "Show Previous Change (inline diff)" })
 
