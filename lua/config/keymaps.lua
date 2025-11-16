@@ -124,4 +124,21 @@ if vim.g.vscode then
   vmap("n", "zo", "editor.unfold", { desc = "Unfold" })
   vmap("n", "zO", "editor.unfoldRecursively", { desc = "Unfold Recursively" })
   vmap("n", "za", "editor.toggleFold", { desc = "Toggle Fold" })
+
+  -- Copy file path and line number to clipboard
+  local function copyFileLocation()
+    vscode.eval([[
+      const editor = vscode.window.activeTextEditor;
+      if (editor) {
+        const relativePath = vscode.workspace.asRelativePath(editor.document.uri);
+        const lineNumber = editor.selection.active.line + 1; // Convert to 1-indexed
+        const location = `${relativePath}:${lineNumber}`;
+        await vscode.env.clipboard.writeText(location);
+        return location;
+      }
+      return null;
+    ]])
+  end
+
+  map("n", "<leader>yf", copyFileLocation, { desc = "Copy file location to clipboard" })
 end
