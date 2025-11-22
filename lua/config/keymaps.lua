@@ -92,6 +92,7 @@ if vim.g.vscode then
   vmap("n", "<leader>gc", "merge-conflict.accept.current", { desc = "Merge Conflict: Accept Current" })
   vmap("n", "<leader>gb", "merge-conflict.accept.both", { desc = "Merge Conflict: Accept Both" })
   vmap({ "n", "v" }, "<leader>gt", "git.revertSelectedRanges", { desc = "Git: Revert Selected Ranges" })
+  vmap("n", "<leader>gd", "git.openChange", { desc = "Git: Open Diff View" })
 
   -- Dirty Diff / Changes
 
@@ -99,6 +100,9 @@ if vim.g.vscode then
 
   map("n", "]d", gitDiff.goToNextChange, { desc = "Go to Next Change" })
   map("n", "[d", gitDiff.goToPreviousChange, { desc = "Go to Previous Change" })
+  map("n", "]gf", gitDiff.goToNextFile, { desc = "Go to Next Changed File" })
+  map("n", "[gf", gitDiff.goToPreviousFile, { desc = "Go to Previous Changed File" })
+  map("n", "<leader>go", gitDiff.openCurrentFileInNormalEditor, { desc = "Git: Open in Normal Editor" })
   vmap("n", "]D", "editor.action.dirtydiff.next", { desc = "Show Next Change (inline diff)" })
   vmap("n", "[D", "editor.action.dirtydiff.previous", { desc = "Show Previous Change (inline diff)" })
 

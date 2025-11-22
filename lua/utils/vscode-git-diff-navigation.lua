@@ -54,8 +54,37 @@ local function getChangedFilesFromGit()
     end
   end
 
-  -- Sort files
-  table.sort(files)
+  -- Sort files to match VSCode file explorer tree order
+  -- Files are ordered as they appear when expanding folders top-to-bottom
+  table.sort(files, function(a, b)
+    -- Split paths into components
+    local a_parts = {}
+    local b_parts = {}
+    for part in a:gmatch("[^/]+") do
+      table.insert(a_parts, part)
+    end
+    for part in b:gmatch("[^/]+") do
+      table.insert(b_parts, part)
+    end
+
+    -- Compare directory by directory from root
+    local min_len = math.min(#a_parts - 1, #b_parts - 1) -- Exclude filename
+    for i = 1, min_len do
+      if a_parts[i] ~= b_parts[i] then
+        -- Different directories at this level - compare alphabetically
+        return a_parts[i] < b_parts[i]
+      end
+    end
+
+    -- All parent directories are the same
+    -- If one path is deeper (has more directory levels), it comes first
+    if #a_parts ~= #b_parts then
+      return #a_parts > #b_parts -- Deeper paths first
+    end
+
+    -- Same depth, compare filenames
+    return a_parts[#a_parts] < b_parts[#b_parts]
+  end)
 
   cached_files = files
   cache_timestamp = current_time
@@ -205,76 +234,56 @@ function M.isInGitDiffEditor()
   ]])
 end
 
--- Navigate to next change (intelligently handles file boundaries)
-function M.goToNextChange()
+-- Navigate to next changed file
+function M.goToNextFile()
   -- Get file list from git on Lua side
   local file_changes = getChangedFilesFromGit()
   local file_changes_json = toJSON(file_changes)
 
   if M.isInGitDiffEditor() then
-    -- In diff editor
+    -- In diff editor - use git.openChange to maintain diff view
     vscode.eval(string.format([[
       const DEBUG = %d;
       const fileChanges = %s;
-      if (DEBUG) logger.info('[goToNextChange] Starting in diff editor');
-      if (DEBUG) logger.info('[goToNextChange] File changes from git:', fileChanges.length);
+      if (DEBUG) logger.info('[goToNextFile] In diff editor, file changes:', fileChanges.length);
 
-      var activeEditor = vscode.window.activeTextEditor;
-      const lineBefore = activeEditor?.selection.active.line;
-      if (DEBUG) logger.info('[goToNextChange] Line before:', lineBefore);
+      const activeTab = vscode.window.tabGroups.activeTabGroup.activeTab;
+      const activeTabInput = activeTab?.input;
+      const currentFilename = activeTabInput?.modified?.path;
+      if (DEBUG) logger.info('[goToNextFile] Current filename:', currentFilename);
 
-      await vscode.commands.executeCommand("workbench.action.compareEditor.nextChange");
-
-      const lineAfter = activeEditor?.selection.active.line;
-      if (DEBUG) logger.info('[goToNextChange] Line after:', lineAfter);
-
-      const shouldOpenNextFile = !lineBefore || !lineAfter || !(lineAfter > lineBefore);
-      if (DEBUG) logger.info('[goToNextChange] Should open next file:', shouldOpenNextFile);
-
-      if (shouldOpenNextFile) {
-        if (DEBUG) logger.info('[goToNextChange] Opening next file...');
-
-        const activeTab = vscode.window.tabGroups.activeTabGroup.activeTab;
-        const activeTabInput = activeTab?.input;
-        const currentFilename = activeTabInput?.modified?.path;
-        if (DEBUG) logger.info('[goToNextChange] Current filename:', currentFilename);
-
-        if (!currentFilename || fileChanges.length === 0) {
-          if (DEBUG) logger.info('[goToNextChange] No current file or no changes, closing');
-          await vscode.commands.executeCommand("workbench.action.closeActiveEditor");
-          return;
-        }
-
-        const currentIndex = fileChanges.findIndex((file) => file === currentFilename);
-        if (DEBUG) logger.info('[goToNextChange] Current index:', currentIndex, '/', fileChanges.length);
-
-        if (currentIndex === -1) {
-          if (DEBUG) logger.info('[goToNextChange] Current file not in changes, closing editor');
-          await vscode.commands.executeCommand("workbench.action.closeActiveEditor");
-          return;
-        }
-
-        // Loop back to first file if at the end
-        const nextIndex = (currentIndex + 1) %% fileChanges.length;
-        const nextFile = fileChanges[nextIndex];
-        if (DEBUG) logger.info('[goToNextChange] Next index:', nextIndex, '(wrapping:', currentIndex === fileChanges.length - 1, ')');
-        if (DEBUG) logger.info('[goToNextChange] Next file:', nextFile);
-
-        const isPreview = activeTab?.isPreview;
-        if (!isPreview) {
-          await vscode.commands.executeCommand("workbench.action.closeActiveEditor");
-        }
-
-        const nextFileUri = vscode.Uri.file(nextFile);
-        await vscode.commands.executeCommand("git.openChange", nextFileUri);
-        if (DEBUG) logger.info('[goToNextChange] Opened next file');
-      } else {
-        if (DEBUG) logger.info('[goToNextChange] Stayed in current file');
+      if (!currentFilename || fileChanges.length === 0) {
+        if (DEBUG) logger.info('[goToNextFile] No current file or no changes');
+        return;
       }
+
+      const currentIndex = fileChanges.findIndex((file) => file === currentFilename);
+      if (DEBUG) logger.info('[goToNextFile] Current index:', currentIndex, '/', fileChanges.length);
+
+      if (currentIndex === -1) {
+        if (DEBUG) logger.info('[goToNextFile] Current file not in changes');
+        return;
+      }
+
+      // Loop back to first file if at the end
+      const nextIndex = (currentIndex + 1) %% fileChanges.length;
+      const nextFile = fileChanges[nextIndex];
+      if (DEBUG) logger.info('[goToNextFile] Next index:', nextIndex, '(wrapping:', currentIndex === fileChanges.length - 1, ')');
+      if (DEBUG) logger.info('[goToNextFile] Next file:', nextFile);
+
+      // Close current editor if not preview
+      const isPreview = activeTab?.isPreview;
+      if (!isPreview) {
+        await vscode.commands.executeCommand("workbench.action.closeActiveEditor");
+      }
+
+      // Use git.openChange to maintain diff view
+      const nextFileUri = vscode.Uri.file(nextFile);
+      await vscode.commands.executeCommand("git.openChange", nextFileUri);
+      if (DEBUG) logger.info('[goToNextFile] Opened next file in diff view');
     ]], DEBUG, file_changes_json))
   else
-    -- In normal editor
-    -- Get change bounds with caching
+    -- In normal editor - open in normal view
     local change_bounds_map = getChangeBoundsForAllFiles(file_changes)
 
     -- Convert to JSON format: {"path": {"first": 10, "last": 50}, ...}
@@ -289,110 +298,91 @@ function M.goToNextChange()
       const DEBUG = %d;
       const fileChanges = %s;
       const changeBounds = %s;
-      if (DEBUG) logger.info('[goToNextChange] Starting in normal editor');
-      if (DEBUG) logger.info('[goToNextChange] File changes from git:', fileChanges.length);
+      if (DEBUG) logger.info('[goToNextFile] In normal editor, file changes:', fileChanges.length);
 
       var activeEditor = vscode.window.activeTextEditor;
-      const lineBefore = activeEditor?.selection.active.line;
+      const currentFilename = activeEditor?.document.uri.path;
+      if (DEBUG) logger.info('[goToNextFile] Current filename:', currentFilename);
 
-      await vscode.commands.executeCommand("workbench.action.editor.nextChange");
+      if (!currentFilename || fileChanges.length === 0) return;
 
-      const lineAfter = activeEditor?.selection.active.line;
-      const shouldOpenNextFile = !lineBefore || !lineAfter || !(lineAfter > lineBefore);
+      const currentIndex = fileChanges.findIndex((file) => file === currentFilename);
+      if (DEBUG) logger.info('[goToNextFile] Current index:', currentIndex, '/', fileChanges.length);
 
-      if (shouldOpenNextFile && fileChanges.length > 0) {
-        if (DEBUG) logger.info('[goToNextChange] No more changes in current file, switching to next file');
+      if (currentIndex !== -1) {
+        // Loop back to first file if at the end
+        const nextIndex = (currentIndex + 1) %% fileChanges.length;
+        const nextFile = fileChanges[nextIndex];
+        if (DEBUG) logger.info('[goToNextFile] Opening next file in normal editor:', nextFile);
 
-        const currentFilename = activeEditor?.document.uri.path;
-        if (DEBUG) logger.info('[goToNextChange] Current filename:', currentFilename);
+        const nextFileUri = vscode.Uri.file(nextFile);
+        const bounds = changeBounds[nextFile];
+        const firstChangeLine = bounds ? bounds.first : 1;
+        if (DEBUG) logger.info('[goToNextFile] First change line:', firstChangeLine);
 
-        if (!currentFilename) return;
-
-        const currentIndex = fileChanges.findIndex((file) => file === currentFilename);
-        if (DEBUG) logger.info('[goToNextChange] Current index:', currentIndex, '/', fileChanges.length);
-
-        if (currentIndex !== -1) {
-          // Loop back to first file if at the end
-          const nextIndex = (currentIndex + 1) %% fileChanges.length;
-          const nextFile = fileChanges[nextIndex];
-          if (DEBUG) logger.info('[goToNextChange] Opening next file in normal editor:', nextFile);
-
-          const nextFileUri = vscode.Uri.file(nextFile);
-          const bounds = changeBounds[nextFile];
-          const firstChangeLine = bounds ? bounds.first : 1;
-          if (DEBUG) logger.info('[goToNextChange] First change line:', firstChangeLine);
-
-          // Open document and jump directly to the line
-          const doc = await vscode.workspace.openTextDocument(nextFileUri);
-          const editor = await vscode.window.showTextDocument(doc);
-          const targetPos = new vscode.Position(firstChangeLine - 1, 0); // Convert to 0-based
-          editor.selection = new vscode.Selection(targetPos, targetPos);
-          editor.revealRange(new vscode.Range(targetPos, targetPos), vscode.TextEditorRevealType.InCenter);
-        }
+        // Open in normal editor (not diff view)
+        const doc = await vscode.workspace.openTextDocument(nextFileUri);
+        const editor = await vscode.window.showTextDocument(doc);
+        const targetPos = new vscode.Position(firstChangeLine - 1, 0);
+        editor.selection = new vscode.Selection(targetPos, targetPos);
+        editor.revealRange(new vscode.Range(targetPos, targetPos), vscode.TextEditorRevealType.InCenter);
       }
     ]], DEBUG, file_changes_json, change_bounds_json))
   end
 end
 
--- Navigate to previous change (intelligently handles file boundaries)
-function M.goToPreviousChange()
+-- Navigate to previous changed file
+function M.goToPreviousFile()
   -- Get file list from git on Lua side
   local file_changes = getChangedFilesFromGit()
   local file_changes_json = toJSON(file_changes)
 
   if M.isInGitDiffEditor() then
-    -- In diff editor
+    -- In diff editor - use git.openChange to maintain diff view
     vscode.eval(string.format([[
       const DEBUG = %d;
       const fileChanges = %s;
-      if (DEBUG) logger.info('[goToPreviousChange] Starting in diff editor');
-      if (DEBUG) logger.info('[goToPreviousChange] File changes from git:', fileChanges.length);
+      if (DEBUG) logger.info('[goToPreviousFile] In diff editor, file changes:', fileChanges.length);
 
-      var activeEditor = vscode.window.activeTextEditor;
-      const lineBefore = activeEditor?.selection.active.line;
+      const activeTab = vscode.window.tabGroups.activeTabGroup.activeTab;
+      const activeTabInput = activeTab?.input;
+      const currentFilename = activeTabInput?.modified?.path;
+      if (DEBUG) logger.info('[goToPreviousFile] Current filename:', currentFilename);
 
-      await vscode.commands.executeCommand("workbench.action.compareEditor.previousChange");
-
-      const lineAfter = activeEditor?.selection.active.line;
-
-      const shouldOpenPreviousFile = !lineBefore || !lineAfter || !(lineAfter < lineBefore);
-
-      if (shouldOpenPreviousFile) {
-        if (DEBUG) logger.info('[goToPreviousChange] Opening previous file...');
-
-        const activeTab = vscode.window.tabGroups.activeTabGroup.activeTab;
-        const activeTabInput = activeTab?.input;
-        const currentFilename = activeTabInput?.modified?.path;
-
-        if (!currentFilename || fileChanges.length === 0) {
-          await vscode.commands.executeCommand("workbench.action.closeActiveEditor");
-          return;
-        }
-
-        const currentIndex = fileChanges.findIndex((file) => file === currentFilename);
-
-        if (currentIndex === -1) {
-          await vscode.commands.executeCommand("workbench.action.closeActiveEditor");
-          return;
-        }
-
-        // Loop back to last file if at the beginning
-        const previousIndex = currentIndex === 0 ? fileChanges.length - 1 : currentIndex - 1;
-        const previousFile = fileChanges[previousIndex];
-        const isPreview = activeTab?.isPreview;
-
-        if (!isPreview) {
-          await vscode.commands.executeCommand("workbench.action.closeActiveEditor");
-        }
-
-        const previousFileUri = vscode.Uri.file(previousFile);
-        await vscode.commands.executeCommand("git.openChange", previousFileUri);
-        await vscode.commands.executeCommand("workbench.action.compareEditor.previousChange");
+      if (!currentFilename || fileChanges.length === 0) {
+        if (DEBUG) logger.info('[goToPreviousFile] No current file or no changes');
+        return;
       }
+
+      const currentIndex = fileChanges.findIndex((file) => file === currentFilename);
+      if (DEBUG) logger.info('[goToPreviousFile] Current index:', currentIndex, '/', fileChanges.length);
+
+      if (currentIndex === -1) {
+        if (DEBUG) logger.info('[goToPreviousFile] Current file not in changes');
+        return;
+      }
+
+      // Loop back to last file if at the beginning
+      const previousIndex = currentIndex === 0 ? fileChanges.length - 1 : currentIndex - 1;
+      const previousFile = fileChanges[previousIndex];
+      if (DEBUG) logger.info('[goToPreviousFile] Previous index:', previousIndex, '(wrapping:', currentIndex === 0, ')');
+      if (DEBUG) logger.info('[goToPreviousFile] Previous file:', previousFile);
+
+      // Close current editor if not preview
+      const isPreview = activeTab?.isPreview;
+      if (!isPreview) {
+        await vscode.commands.executeCommand("workbench.action.closeActiveEditor");
+      }
+
+      // Use git.openChange to maintain diff view
+      const previousFileUri = vscode.Uri.file(previousFile);
+      await vscode.commands.executeCommand("git.openChange", previousFileUri);
+      // Jump to last change in the diff view
+      await vscode.commands.executeCommand("workbench.action.compareEditor.previousChange");
+      if (DEBUG) logger.info('[goToPreviousFile] Opened previous file in diff view');
     ]], DEBUG, file_changes_json))
   else
-    -- In normal editor
-    -- Get change bounds with caching
+    -- In normal editor - open in normal view
     local change_bounds_map = getChangeBoundsForAllFiles(file_changes)
 
     -- Convert to JSON format
@@ -407,49 +397,204 @@ function M.goToPreviousChange()
       const DEBUG = %d;
       const fileChanges = %s;
       const changeBounds = %s;
-      if (DEBUG) logger.info('[goToPreviousChange] Starting in normal editor');
-      if (DEBUG) logger.info('[goToPreviousChange] File changes from git:', fileChanges.length);
+      if (DEBUG) logger.info('[goToPreviousFile] In normal editor, file changes:', fileChanges.length);
 
       var activeEditor = vscode.window.activeTextEditor;
-      const lineBefore = activeEditor?.selection.active.line;
+      const currentFilename = activeEditor?.document.uri.path;
+      if (DEBUG) logger.info('[goToPreviousFile] Current filename:', currentFilename);
 
-      await vscode.commands.executeCommand("workbench.action.editor.previousChange");
+      if (!currentFilename || fileChanges.length === 0) return;
 
-      const lineAfter = activeEditor?.selection.active.line;
-      const shouldOpenPreviousFile = !lineBefore || !lineAfter || !(lineAfter < lineBefore);
+      const currentIndex = fileChanges.findIndex((file) => file === currentFilename);
+      if (DEBUG) logger.info('[goToPreviousFile] Current index:', currentIndex, '/', fileChanges.length);
 
-      if (shouldOpenPreviousFile && fileChanges.length > 0) {
-        if (DEBUG) logger.info('[goToPreviousChange] No more changes in current file, switching to previous file');
+      if (currentIndex !== -1) {
+        // Loop back to last file if at the beginning
+        const previousIndex = currentIndex === 0 ? fileChanges.length - 1 : currentIndex - 1;
+        const previousFile = fileChanges[previousIndex];
+        if (DEBUG) logger.info('[goToPreviousFile] Opening previous file in normal editor:', previousFile);
 
-        const currentFilename = activeEditor?.document.uri.path;
-        if (DEBUG) logger.info('[goToPreviousChange] Current filename:', currentFilename);
+        const previousFileUri = vscode.Uri.file(previousFile);
+        const bounds = changeBounds[previousFile];
+        const lastChangeLine = bounds ? bounds.last : 1;
+        if (DEBUG) logger.info('[goToPreviousFile] Last change line:', lastChangeLine);
 
-        if (!currentFilename) return;
-
-        const currentIndex = fileChanges.findIndex((file) => file === currentFilename);
-        if (DEBUG) logger.info('[goToPreviousChange] Current index:', currentIndex, '/', fileChanges.length);
-
-        if (currentIndex !== -1) {
-          // Loop back to last file if at the beginning
-          const previousIndex = currentIndex === 0 ? fileChanges.length - 1 : currentIndex - 1;
-          const previousFile = fileChanges[previousIndex];
-          if (DEBUG) logger.info('[goToPreviousChange] Opening previous file in normal editor:', previousFile);
-
-          const previousFileUri = vscode.Uri.file(previousFile);
-          const bounds = changeBounds[previousFile];
-          const lastChangeLine = bounds ? bounds.last : 1;
-          if (DEBUG) logger.info('[goToPreviousChange] Last change line:', lastChangeLine);
-
-          // Open document and jump directly to the line
-          const doc = await vscode.workspace.openTextDocument(previousFileUri);
-          const editor = await vscode.window.showTextDocument(doc);
-          const targetPos = new vscode.Position(lastChangeLine - 1, 0); // Convert to 0-based
-          editor.selection = new vscode.Selection(targetPos, targetPos);
-          editor.revealRange(new vscode.Range(targetPos, targetPos), vscode.TextEditorRevealType.InCenter);
-        }
+        // Open in normal editor (not diff view)
+        const doc = await vscode.workspace.openTextDocument(previousFileUri);
+        const editor = await vscode.window.showTextDocument(doc);
+        const targetPos = new vscode.Position(lastChangeLine - 1, 0);
+        editor.selection = new vscode.Selection(targetPos, targetPos);
+        editor.revealRange(new vscode.Range(targetPos, targetPos), vscode.TextEditorRevealType.InCenter);
       }
     ]], DEBUG, file_changes_json, change_bounds_json))
   end
+end
+
+-- Navigate to next change (stays within current file, wrapping at boundaries)
+function M.goToNextChange()
+  if M.isInGitDiffEditor() then
+    -- In diff editor - navigate to next change in current file
+    if DEBUG == 1 then
+      print("[goToNextChange] Executing in diff editor")
+    end
+    vscode.action("workbench.action.compareEditor.nextChange")
+  else
+    -- In normal editor - navigate to next change and sync cursor position
+    if DEBUG == 1 then
+      local cursor_before = vim.api.nvim_win_get_cursor(0)
+      print(string.format("[goToNextChange] Lua BEFORE: line=%d, col=%d", cursor_before[1], cursor_before[2]))
+    end
+
+    local result = vscode.eval(string.format([[
+      const DEBUG = %d;
+
+      // Execute the navigation command
+      await vscode.commands.executeCommand("workbench.action.editor.nextChange");
+
+      // Get the new cursor position from VSCode
+      const editor = vscode.window.activeTextEditor;
+      if (editor) {
+        const pos = editor.selection.active;
+        if (DEBUG) logger.info('[goToNextChange] VSCode position after:', pos.line, ':', pos.character);
+
+        // Return position to Lua side for syncing (convert to 1-based)
+        return { line: pos.line + 1, character: pos.character };
+      }
+      return null;
+    ]], DEBUG))
+
+    if DEBUG == 1 then
+      if result then
+        print(string.format("[goToNextChange] Got result from vscode.eval: line=%d, col=%d", result.line or -1, result.character or -1))
+      else
+        print("[goToNextChange] Got null result from vscode.eval")
+      end
+    end
+
+    -- Sync the cursor position to Neovim
+    if result and result.line then
+      vim.api.nvim_win_set_cursor(0, {result.line, result.character})
+      if DEBUG == 1 then
+        local cursor_after = vim.api.nvim_win_get_cursor(0)
+        print(string.format("[goToNextChange] Lua AFTER (synced): line=%d, col=%d", cursor_after[1], cursor_after[2]))
+      end
+    end
+  end
+end
+
+-- Navigate to previous change (stays within current file, wrapping at boundaries)
+function M.goToPreviousChange()
+  if M.isInGitDiffEditor() then
+    -- In diff editor - navigate to previous change in current file
+    if DEBUG == 1 then
+      print("[goToPreviousChange] Executing in diff editor")
+    end
+    vscode.action("workbench.action.compareEditor.previousChange")
+  else
+    -- In normal editor - navigate to previous change and sync cursor position
+    if DEBUG == 1 then
+      local cursor_before = vim.api.nvim_win_get_cursor(0)
+      print(string.format("[goToPreviousChange] Lua BEFORE: line=%d, col=%d", cursor_before[1], cursor_before[2]))
+    end
+
+    local result = vscode.eval(string.format([[
+      const DEBUG = %d;
+
+      // Execute the navigation command
+      await vscode.commands.executeCommand("workbench.action.editor.previousChange");
+
+      // Get the new cursor position from VSCode
+      const editor = vscode.window.activeTextEditor;
+      if (editor) {
+        const pos = editor.selection.active;
+        if (DEBUG) logger.info('[goToPreviousChange] VSCode position after:', pos.line, ':', pos.character);
+
+        // Return position to Lua side for syncing (convert to 1-based)
+        return { line: pos.line + 1, character: pos.character };
+      }
+      return null;
+    ]], DEBUG))
+
+    if DEBUG == 1 then
+      if result then
+        print(string.format("[goToPreviousChange] Got result from vscode.eval: line=%d, col=%d", result.line or -1, result.character or -1))
+      else
+        print("[goToPreviousChange] Got null result from vscode.eval")
+      end
+    end
+
+    -- Sync the cursor position to Neovim
+    if result and result.line then
+      vim.api.nvim_win_set_cursor(0, {result.line, result.character})
+      if DEBUG == 1 then
+        local cursor_after = vim.api.nvim_win_get_cursor(0)
+        print(string.format("[goToPreviousChange] Lua AFTER (synced): line=%d, col=%d", cursor_after[1], cursor_after[2]))
+      end
+    end
+  end
+end
+
+-- Switch from diff view to normal editor for the current file
+function M.openCurrentFileInNormalEditor()
+  vscode.eval(string.format([[
+    const DEBUG = %d;
+
+    // Check if we're in a diff editor
+    const activeTab = vscode.window.tabGroups.activeTabGroup.activeTab;
+    const activeTabInput = activeTab?.input;
+
+    if (DEBUG) logger.info('[openCurrentFileInNormalEditor] Active tab input:', activeTabInput);
+
+    // Case 1: Standard diff view (has modified and original)
+    const isStandardDiffEditor = Boolean(activeTabInput?.modified && activeTabInput?.original);
+
+    // Case 2: Single file git view (uri with git scheme)
+    const isGitFileView = Boolean(activeTabInput?.uri && activeTabInput.uri.scheme === 'git');
+
+    if (!isStandardDiffEditor && !isGitFileView) {
+      if (DEBUG) logger.info('[openCurrentFileInNormalEditor] Not in diff/git view, nothing to do');
+      return;
+    }
+
+    // Get the file path and current cursor position
+    let currentFilePath;
+
+    if (isStandardDiffEditor) {
+      // Standard diff view: get from modified property
+      currentFilePath = activeTabInput?.modified?.path;
+    } else if (isGitFileView) {
+      // Git file view: get from uri property
+      currentFilePath = activeTabInput?.uri?.path;
+    }
+
+    const activeEditor = vscode.window.activeTextEditor;
+    const currentPosition = activeEditor?.selection.active;
+
+    if (DEBUG) logger.info('[openCurrentFileInNormalEditor] Current file:', currentFilePath);
+    if (DEBUG) logger.info('[openCurrentFileInNormalEditor] Current position:', currentPosition?.line, ':', currentPosition?.character);
+
+    if (!currentFilePath) {
+      if (DEBUG) logger.info('[openCurrentFileInNormalEditor] No current file path');
+      return;
+    }
+
+    // Close the diff/git editor
+    await vscode.commands.executeCommand("workbench.action.closeActiveEditor");
+
+    // Open the file in normal editor
+    const fileUri = vscode.Uri.file(currentFilePath);
+    const doc = await vscode.workspace.openTextDocument(fileUri);
+    const editor = await vscode.window.showTextDocument(doc);
+
+    // Restore cursor position if we had one
+    if (currentPosition) {
+      editor.selection = new vscode.Selection(currentPosition, currentPosition);
+      editor.revealRange(new vscode.Range(currentPosition, currentPosition), vscode.TextEditorRevealType.InCenter);
+      if (DEBUG) logger.info('[openCurrentFileInNormalEditor] Restored cursor position');
+    }
+
+    if (DEBUG) logger.info('[openCurrentFileInNormalEditor] Opened file in normal editor');
+  ]], DEBUG))
 end
 
 return M
