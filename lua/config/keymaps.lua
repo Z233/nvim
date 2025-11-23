@@ -92,7 +92,10 @@ if vim.g.vscode then
   vmap("n", "<leader>gc", "merge-conflict.accept.current", { desc = "Merge Conflict: Accept Current" })
   vmap("n", "<leader>gb", "merge-conflict.accept.both", { desc = "Merge Conflict: Accept Both" })
   vmap({ "n", "v" }, "<leader>gt", "git.revertSelectedRanges", { desc = "Git: Revert Selected Ranges" })
-  vmap("n", "<leader>gd", "gitlens.diffWithPrevious", { desc = "Git: Open Diff View (GitLens)" })
+
+  -- GitLens Revision Navigation
+  vmap("n", "]r", "gitlens.diffWithNext", { desc = "GitLens: Diff with Next Revision" })
+  vmap("n", "[r", "gitlens.diffWithPrevious", { desc = "GitLens: Diff with Previous Revision" })
 
   -- Dirty Diff / Changes
 

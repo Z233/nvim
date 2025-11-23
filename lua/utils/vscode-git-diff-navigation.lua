@@ -5,7 +5,7 @@ local M = {}
 
 local vscode = require("vscode-neovim")
 
-local DEBUG = 1
+local DEBUG = 0
 
 -- Cache for git changed files
 local cached_files = nil
