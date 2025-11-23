@@ -1,11 +1,11 @@
--- VSCode Git Diff Navigation Utilities
--- Hybrid approach: Lua for git operations, JS for VSCode commands
+-- VSCode GitLens Diff Navigation Utilities
+-- Hybrid approach: Lua for git operations, JS for VSCode/GitLens commands
 
 local M = {}
 
 local vscode = require("vscode-neovim")
 
-local DEBUG = 0
+local DEBUG = 1
 
 -- Cache for git changed files
 local cached_files = nil
@@ -225,12 +225,55 @@ local function toJSON(tbl)
   return "[" .. table.concat(items, ", ") .. "]"
 end
 
--- Check if current tab is a git diff editor
+-- Execute VSCode navigation command and sync cursor position
+local function executeNavigationWithCursorSync(command, debug_prefix)
+  if DEBUG == 1 then
+    local cursor_before = vim.api.nvim_win_get_cursor(0)
+    print(string.format("[%s] BEFORE: line=%d, col=%d", debug_prefix, cursor_before[1], cursor_before[2]))
+  end
+
+  local result = vscode.eval(string.format([[
+    const DEBUG = %d;
+
+    // Execute the navigation command
+    await vscode.commands.executeCommand("%s");
+
+    // Get the new cursor position from VSCode
+    const editor = vscode.window.activeTextEditor;
+    if (editor) {
+      const pos = editor.selection.active;
+      if (DEBUG) logger.info('[%s] VSCode position after:', pos.line, ':', pos.character);
+      return { line: pos.line + 1, character: pos.character };
+    }
+    return null;
+  ]], DEBUG, command, debug_prefix))
+
+  if DEBUG == 1 then
+    if result then
+      print(string.format("[%s] Got result: line=%d, col=%d", debug_prefix, result.line or -1, result.character or -1))
+    else
+      print(string.format("[%s] Got null result", debug_prefix))
+    end
+  end
+
+  -- Sync the cursor position to Neovim
+  if result and result.line then
+    vim.api.nvim_win_set_cursor(0, {result.line, result.character})
+    if DEBUG == 1 then
+      local cursor_after = vim.api.nvim_win_get_cursor(0)
+      print(string.format("[%s] AFTER (synced): line=%d, col=%d", debug_prefix, cursor_after[1], cursor_after[2]))
+    end
+  end
+end
+
+-- Check if current tab is a diff editor (supports both git:// and gitlens:// schemes)
 function M.isInGitDiffEditor()
   return vscode.eval([[
     const activeTab = vscode.window.tabGroups.activeTabGroup.activeTab;
     const activeTabInput = activeTab?.input;
-    return Boolean(activeTabInput?.modified && activeTabInput?.original && activeTabInput.original.scheme === 'git');
+    // Support both gitlens:// and git:// schemes since GitLens commands may use either
+    return Boolean(activeTabInput?.modified && activeTabInput?.original &&
+      (activeTabInput.original.scheme === 'gitlens' || activeTabInput.original.scheme === 'git'));
   ]])
 end
 
@@ -241,7 +284,7 @@ function M.goToNextFile()
   local file_changes_json = toJSON(file_changes)
 
   if M.isInGitDiffEditor() then
-    -- In diff editor - use git.openChange to maintain diff view
+    -- In diff editor - use gitlens.diffWithPrevious to maintain diff view
     vscode.eval(string.format([[
       const DEBUG = %d;
       const fileChanges = %s;
@@ -277,9 +320,9 @@ function M.goToNextFile()
         await vscode.commands.executeCommand("workbench.action.closeActiveEditor");
       }
 
-      // Use git.openChange to maintain diff view
+      // Use gitlens.diffWithPrevious to maintain diff view
       const nextFileUri = vscode.Uri.file(nextFile);
-      await vscode.commands.executeCommand("git.openChange", nextFileUri);
+      await vscode.commands.executeCommand("gitlens.diffWithPrevious", nextFileUri);
       if (DEBUG) logger.info('[goToNextFile] Opened next file in diff view');
     ]], DEBUG, file_changes_json))
   else
@@ -338,7 +381,7 @@ function M.goToPreviousFile()
   local file_changes_json = toJSON(file_changes)
 
   if M.isInGitDiffEditor() then
-    -- In diff editor - use git.openChange to maintain diff view
+    -- In diff editor - use gitlens.diffWithPrevious to maintain diff view
     vscode.eval(string.format([[
       const DEBUG = %d;
       const fileChanges = %s;
@@ -374,9 +417,9 @@ function M.goToPreviousFile()
         await vscode.commands.executeCommand("workbench.action.closeActiveEditor");
       }
 
-      // Use git.openChange to maintain diff view
+      // Use gitlens.diffWithPrevious to maintain diff view
       const previousFileUri = vscode.Uri.file(previousFile);
-      await vscode.commands.executeCommand("git.openChange", previousFileUri);
+      await vscode.commands.executeCommand("gitlens.diffWithPrevious", previousFileUri);
       // Jump to last change in the diff view
       await vscode.commands.executeCommand("workbench.action.compareEditor.previousChange");
       if (DEBUG) logger.info('[goToPreviousFile] Opened previous file in diff view');
@@ -433,104 +476,24 @@ end
 -- Navigate to next change (stays within current file, wrapping at boundaries)
 function M.goToNextChange()
   if M.isInGitDiffEditor() then
-    -- In diff editor - navigate to next change in current file
-    if DEBUG == 1 then
-      print("[goToNextChange] Executing in diff editor")
-    end
-    vscode.action("workbench.action.compareEditor.nextChange")
+    -- In diff editor - navigate to next change and sync cursor position
+    -- Uses workbench.action.compareEditor.nextChange which works with both git and GitLens diff views
+    executeNavigationWithCursorSync("workbench.action.compareEditor.nextChange", "goToNextChange")
   else
     -- In normal editor - navigate to next change and sync cursor position
-    if DEBUG == 1 then
-      local cursor_before = vim.api.nvim_win_get_cursor(0)
-      print(string.format("[goToNextChange] Lua BEFORE: line=%d, col=%d", cursor_before[1], cursor_before[2]))
-    end
-
-    local result = vscode.eval(string.format([[
-      const DEBUG = %d;
-
-      // Execute the navigation command
-      await vscode.commands.executeCommand("workbench.action.editor.nextChange");
-
-      // Get the new cursor position from VSCode
-      const editor = vscode.window.activeTextEditor;
-      if (editor) {
-        const pos = editor.selection.active;
-        if (DEBUG) logger.info('[goToNextChange] VSCode position after:', pos.line, ':', pos.character);
-
-        // Return position to Lua side for syncing (convert to 1-based)
-        return { line: pos.line + 1, character: pos.character };
-      }
-      return null;
-    ]], DEBUG))
-
-    if DEBUG == 1 then
-      if result then
-        print(string.format("[goToNextChange] Got result from vscode.eval: line=%d, col=%d", result.line or -1, result.character or -1))
-      else
-        print("[goToNextChange] Got null result from vscode.eval")
-      end
-    end
-
-    -- Sync the cursor position to Neovim
-    if result and result.line then
-      vim.api.nvim_win_set_cursor(0, {result.line, result.character})
-      if DEBUG == 1 then
-        local cursor_after = vim.api.nvim_win_get_cursor(0)
-        print(string.format("[goToNextChange] Lua AFTER (synced): line=%d, col=%d", cursor_after[1], cursor_after[2]))
-      end
-    end
+    executeNavigationWithCursorSync("workbench.action.editor.nextChange", "goToNextChange")
   end
 end
 
 -- Navigate to previous change (stays within current file, wrapping at boundaries)
 function M.goToPreviousChange()
   if M.isInGitDiffEditor() then
-    -- In diff editor - navigate to previous change in current file
-    if DEBUG == 1 then
-      print("[goToPreviousChange] Executing in diff editor")
-    end
-    vscode.action("workbench.action.compareEditor.previousChange")
+    -- In diff editor - navigate to previous change and sync cursor position
+    -- Uses workbench.action.compareEditor.previousChange which works with both git and GitLens diff views
+    executeNavigationWithCursorSync("workbench.action.compareEditor.previousChange", "goToPreviousChange")
   else
     -- In normal editor - navigate to previous change and sync cursor position
-    if DEBUG == 1 then
-      local cursor_before = vim.api.nvim_win_get_cursor(0)
-      print(string.format("[goToPreviousChange] Lua BEFORE: line=%d, col=%d", cursor_before[1], cursor_before[2]))
-    end
-
-    local result = vscode.eval(string.format([[
-      const DEBUG = %d;
-
-      // Execute the navigation command
-      await vscode.commands.executeCommand("workbench.action.editor.previousChange");
-
-      // Get the new cursor position from VSCode
-      const editor = vscode.window.activeTextEditor;
-      if (editor) {
-        const pos = editor.selection.active;
-        if (DEBUG) logger.info('[goToPreviousChange] VSCode position after:', pos.line, ':', pos.character);
-
-        // Return position to Lua side for syncing (convert to 1-based)
-        return { line: pos.line + 1, character: pos.character };
-      }
-      return null;
-    ]], DEBUG))
-
-    if DEBUG == 1 then
-      if result then
-        print(string.format("[goToPreviousChange] Got result from vscode.eval: line=%d, col=%d", result.line or -1, result.character or -1))
-      else
-        print("[goToPreviousChange] Got null result from vscode.eval")
-      end
-    end
-
-    -- Sync the cursor position to Neovim
-    if result and result.line then
-      vim.api.nvim_win_set_cursor(0, {result.line, result.character})
-      if DEBUG == 1 then
-        local cursor_after = vim.api.nvim_win_get_cursor(0)
-        print(string.format("[goToPreviousChange] Lua AFTER (synced): line=%d, col=%d", cursor_after[1], cursor_after[2]))
-      end
-    end
+    executeNavigationWithCursorSync("workbench.action.editor.previousChange", "goToPreviousChange")
   end
 end
 
@@ -539,33 +502,23 @@ function M.openCurrentFileInNormalEditor()
   vscode.eval(string.format([[
     const DEBUG = %d;
 
-    // Check if we're in a diff editor
+    // Check if we're in a diff editor (git or GitLens)
     const activeTab = vscode.window.tabGroups.activeTabGroup.activeTab;
     const activeTabInput = activeTab?.input;
 
     if (DEBUG) logger.info('[openCurrentFileInNormalEditor] Active tab input:', activeTabInput);
 
-    // Case 1: Standard diff view (has modified and original)
-    const isStandardDiffEditor = Boolean(activeTabInput?.modified && activeTabInput?.original);
+    // Check for diff view (supports both git:// and gitlens:// schemes)
+    const isDiffEditor = Boolean(activeTabInput?.modified && activeTabInput?.original &&
+      (activeTabInput.original.scheme === 'gitlens' || activeTabInput.original.scheme === 'git'));
 
-    // Case 2: Single file git view (uri with git scheme)
-    const isGitFileView = Boolean(activeTabInput?.uri && activeTabInput.uri.scheme === 'git');
-
-    if (!isStandardDiffEditor && !isGitFileView) {
-      if (DEBUG) logger.info('[openCurrentFileInNormalEditor] Not in diff/git view, nothing to do');
+    if (!isDiffEditor) {
+      if (DEBUG) logger.info('[openCurrentFileInNormalEditor] Not in diff view, nothing to do');
       return;
     }
 
     // Get the file path and current cursor position
-    let currentFilePath;
-
-    if (isStandardDiffEditor) {
-      // Standard diff view: get from modified property
-      currentFilePath = activeTabInput?.modified?.path;
-    } else if (isGitFileView) {
-      // Git file view: get from uri property
-      currentFilePath = activeTabInput?.uri?.path;
-    }
+    const currentFilePath = activeTabInput?.modified?.path;
 
     const activeEditor = vscode.window.activeTextEditor;
     const currentPosition = activeEditor?.selection.active;
@@ -578,7 +531,7 @@ function M.openCurrentFileInNormalEditor()
       return;
     }
 
-    // Close the diff/git editor
+    // Close the diff editor
     await vscode.commands.executeCommand("workbench.action.closeActiveEditor");
 
     // Open the file in normal editor
