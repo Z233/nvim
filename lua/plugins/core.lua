@@ -8,7 +8,7 @@ return {
     },
   },
   {
-    'echasnovski/mini.ai',
+    'nvim-mini/mini.ai',
     opts = function()
       local ai = require("mini.ai")
       
@@ -170,7 +170,7 @@ return {
     vscode = true
   },
   {
-    "echasnovski/mini.surround",
+    "nvim-mini/mini.surround",
     vscode = true,
     event = "BufRead",
     config = function(_, _)
@@ -217,8 +217,24 @@ return {
     version = "*",
     event = "VeryLazy",
     config = function()
-        require("timber").setup({
-        })
+      local ts_fn_utils = require("utils.treesitter-function-name")
+      local js_default_log_template = [[console.debug('[%function_name] %log_target', %log_target);]]
+
+      require("timber").setup({
+        template_placeholders = {
+          function_name = ts_fn_utils.find_function_name,
+        },
+        log_templates = {
+          default = {
+            javascript = js_default_log_template,
+            typescript = js_default_log_template,
+            astro = js_default_log_template,
+            vue = js_default_log_template,
+            jsx = js_default_log_template,
+            tsx = js_default_log_template,
+          }
+        }
+      })
     end
   }
 }
