@@ -97,6 +97,12 @@ if vim.g.vscode then
   vmap("n", "]r", "gitlens.diffWithNext", { desc = "GitLens: Diff with Next Revision" })
   vmap("n", "[r", "gitlens.diffWithPrevious", { desc = "GitLens: Diff with Previous Revision" })
 
+  -- GitLens Line-level Diff Navigation with History
+  local lineDiffHistory = require("utils.gitlens-line-history")
+
+  map("n", "[R", lineDiffHistory.goToPreviousRevision, { desc = "GitLens: Diff Line with Previous Revision" })
+  map("n", "]R", lineDiffHistory.goToNextRevision, { desc = "GitLens: Go Back in History" })
+
   -- Dirty Diff / Changes
 
   local gitDiff = require("utils.vscode-git-diff-navigation")
