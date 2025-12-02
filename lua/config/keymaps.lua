@@ -30,7 +30,22 @@ map("n", "vH", "vg0", { desc = "Visual till line start" })
 map("n", "dH", "dg0", { desc = "Delete till line start" })
 map("n", "yH", "yg0", { desc = "Yank till line start" })
 
--- map("o", "L", "g_", { desc: "Move to end of line" });
+-- Stay in visual mode after indent
+vim.keymap.set("v", "<", "<gv")
+vim.keymap.set("v", ">", ">gv")
+
+-- Make U opposite of u (redo)
+vim.keymap.set("n", "U", "<C-r>", { desc = "Redo" })
+
+-- Powerful escape: clear highlights
+vim.keymap.set({ "i", "n" }, "<Esc>", function()
+  vim.cmd("noh")
+  return "<Esc>"
+end, { expr = true, desc = "Escape and clear hlsearch" })
+
+-- Auto-mark before search: set mark 's' so you can jump back with `s
+vim.keymap.set("n", "/", "ms/", { desc = "Search forward (mark s)" })
+vim.keymap.set("n", "?", "ms?", { desc = "Search backward (mark s)" })
 
 -- Move to window using the <ctrl> hjkl keys
 
