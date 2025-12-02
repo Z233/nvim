@@ -30,6 +30,9 @@ map("n", "vH", "vg0", { desc = "Visual till line start" })
 map("n", "dH", "dg0", { desc = "Delete till line start" })
 map("n", "yH", "yg0", { desc = "Yank till line start" })
 
+local easy_motion = require("utils.easy-motion")
+vim.keymap.set({ 'n', 'x' }, 's', easy_motion.jump, { desc = 'Jump to 2 characters' })
+
 -- Stay in visual mode after indent
 vim.keymap.set("v", "<", "<gv")
 vim.keymap.set("v", ">", ">gv")

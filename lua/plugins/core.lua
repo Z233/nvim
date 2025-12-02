@@ -236,5 +236,9 @@ return {
         }
       })
     end
+  },
+  {
+    "folke/flash.nvim",
+    enabled = false
   }
 }
