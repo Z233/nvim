@@ -159,6 +159,11 @@ if vim.g.vscode then
   vmap("n", "zO", "editor.unfoldRecursively", { desc = "Unfold Recursively" })
   vmap("n", "za", "editor.toggleFold", { desc = "Toggle Fold" })
 
+  -- Half-page scroll with cursor centered
+  local scroll = require("utils.vscode-scroll")
+  vim.keymap.set("n", "<C-u>", scroll.scrollHalfPageUp, { desc = "Scroll half page up, cursor centered" })
+  vim.keymap.set("n", "<C-d>", scroll.scrollHalfPageDown, { desc = "Scroll half page down, cursor centered" })
+
   -- Copy file path and line number to clipboard
   local function copyFileLocation()
     vscode.eval([[
