@@ -170,23 +170,43 @@ if vim.g.vscode then
       const editor = vscode.window.activeTextEditor;
       if (editor) {
         const relativePath = vscode.workspace.asRelativePath(editor.document.uri);
-        const lineNumber = editor.selection.active.line + 1; // Convert to 1-indexed
-        const location = `${relativePath}:${lineNumber}`;
+        const startLine = editor.selection.start.line + 1;
+        const endLine = editor.selection.end.line + 1;
+
+        let location;
+        if (startLine === endLine) {
+          location = `@${relativePath}#L${startLine}`;
+        } else {
+          location = `@${relativePath}#L${startLine}-${endLine}`;
+        }
+
         await vscode.env.clipboard.writeText(location);
+        vscode.window.showInformationMessage('Copied: ' + location);
         return location;
       }
       return null;
     ]])
   end
 
-  -- Copy full absolute file path to clipboard
-  local function copyFullPath()
+  -- Copy full absolute file path with line number to clipboard
+  local function copyFileFullLocation()
     vscode.eval([[
       const editor = vscode.window.activeTextEditor;
       if (editor) {
         const fullPath = editor.document.uri.fsPath;
-        await vscode.env.clipboard.writeText(fullPath);
-        return fullPath;
+        const startLine = editor.selection.start.line + 1;
+        const endLine = editor.selection.end.line + 1;
+
+        let location;
+        if (startLine === endLine) {
+          location = `@${fullPath}#L${startLine}`;
+        } else {
+          location = `@${fullPath}#L${startLine}-${endLine}`;
+        }
+
+        await vscode.env.clipboard.writeText(location);
+        vscode.window.showInformationMessage('Copied: ' + location);
+        return location;
       }
       return null;
     ]])
@@ -215,7 +235,7 @@ if vim.g.vscode then
     end
   end
 
-  map("n", "<leader>yf", copyFileLocation, { desc = "Copy file location to clipboard" })
-  map("n", "<leader>yF", copyFullPath, { desc = "Copy full file path to clipboard" })
+  map({ "n", "x" }, "<leader>yf", copyFileLocation, { desc = "Copy file location to clipboard" })
+  map({ "n", "x" }, "<leader>yF", copyFileFullLocation, { desc = "Copy full file path to clipboard" })
   map("n", "<leader>yc", copyLineCommitSha, { desc = "Copy line commit SHA to clipboard" })
 end
