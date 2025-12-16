@@ -179,5 +179,43 @@ if vim.g.vscode then
     ]])
   end
 
+  -- Copy full absolute file path to clipboard
+  local function copyFullPath()
+    vscode.eval([[
+      const editor = vscode.window.activeTextEditor;
+      if (editor) {
+        const fullPath = editor.document.uri.fsPath;
+        await vscode.env.clipboard.writeText(fullPath);
+        return fullPath;
+      }
+      return null;
+    ]])
+  end
+
+  -- Copy commit SHA of current line to clipboard
+  local function copyLineCommitSha()
+    local line = vim.fn.line(".")
+    local file = vim.fn.expand("%:p")
+
+    -- Use git blame to get the commit SHA for the current line
+    local cmd = string.format("git blame -L %d,%d --porcelain '%s' 2>/dev/null | head -1 | cut -d' ' -f1", line, line, file)
+    local sha = vim.fn.system(cmd):gsub("%s+$", "")
+
+    if sha and sha ~= "" and not sha:match("^0+$") then
+      vscode.eval(string.format([[
+        const sha = '%s';
+        await vscode.env.clipboard.writeText(sha);
+        vscode.window.showInformationMessage('Copied: ' + sha);
+        return sha;
+      ]], sha))
+    else
+      vscode.eval([[
+        vscode.window.showWarningMessage('No commit SHA found (line not committed yet)');
+      ]])
+    end
+  end
+
   map("n", "<leader>yf", copyFileLocation, { desc = "Copy file location to clipboard" })
+  map("n", "<leader>yF", copyFullPath, { desc = "Copy full file path to clipboard" })
+  map("n", "<leader>yc", copyLineCommitSha, { desc = "Copy line commit SHA to clipboard" })
 end
