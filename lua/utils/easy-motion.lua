@@ -6,11 +6,53 @@ local ESC = "\27"
 
 vim.api.nvim_set_hl(0, "EasyMotionBackdrop", { fg = "#545c7e" })
 
-local function apply_backdrop(bufnr, ns, line_start, line_end)
+-- Get visible line ranges from VSCode (excludes folded regions)
+-- Returns { ranges: array, startLine: number, endLine: number } or nil
+local function get_vscode_visible_info()
+    local vscode = require("vscode-neovim")
+    local result = vscode.eval([[
+        const editor = vscode.window.activeTextEditor;
+        if (editor) {
+            const visibleRanges = editor.visibleRanges;
+            let ranges = [];
+            let minLine = Infinity;
+            let maxLine = -1;
+            for (const range of visibleRanges) {
+                const start = range.start.line + 1;
+                const end = range.end.line + 1;
+                ranges.push({ start: start, end: end });
+                minLine = Math.min(minLine, start);
+                maxLine = Math.max(maxLine, end);
+            }
+            return { ranges: ranges, startLine: minLine, endLine: maxLine };
+        }
+        return null;
+    ]])
+    if result and type(result) == "table" and result.ranges then
+        return result
+    end
+    return nil
+end
+
+-- Check if a line is visible (not inside a folded region)
+local function is_line_visible(line, vscode_ranges)
+    if vim.g.vscode and vscode_ranges then
+        for _, range in ipairs(vscode_ranges) do
+            if line >= range.start and line <= range["end"] then
+                return true
+            end
+        end
+        return false
+    else
+        return vim.fn.foldclosed(line) == -1
+    end
+end
+
+local function apply_backdrop(bufnr, ns, line_start, line_end, vscode_ranges)
     local lines = vim.api.nvim_buf_get_lines(bufnr, line_start - 1, line_end, false)
     for i, line_text in ipairs(lines) do
         local line = line_start + i - 1
-        if vim.fn.foldclosed(line) == -1 then
+        if is_line_visible(line, vscode_ranges) then
             local line_len = #line_text
             if line_len > 0 then
                 vim.api.nvim_buf_set_extmark(bufnr, ns, line - 1, 0, {
@@ -30,6 +72,17 @@ function M.jump()
     local bufnr = vim.api.nvim_get_current_buf()
     vim.api.nvim_buf_clear_namespace(bufnr, NAMESPACE, 0, -1)
 
+    -- Get VSCode visible info if in VSCode environment
+    local vscode_ranges = nil
+    if vim.g.vscode then
+        local vscode_info = get_vscode_visible_info()
+        if vscode_info then
+            line_idx_start = vscode_info.startLine
+            line_idx_end = vscode_info.endLine
+            vscode_ranges = vscode_info.ranges
+        end
+    end
+
     local char1 = vim.fn.nr2char( vim.fn.getchar() --[[@as number]] )
     if char1 == ESC then
         vim.api.nvim_buf_clear_namespace(bufnr, NAMESPACE, 0, -1)
@@ -42,7 +95,7 @@ function M.jump()
         return
     end
     
-    apply_backdrop(bufnr, NAMESPACE, line_idx_start, line_idx_end)
+    apply_backdrop(bufnr, NAMESPACE, line_idx_start, line_idx_end, vscode_ranges)
     vim.cmd("redraw")
 
     local char_idx = 1
@@ -59,7 +112,7 @@ function M.jump()
         end
         local line_idx = lines_i + line_idx_start - 1
         -- skip folded lines
-        if vim.fn.foldclosed(line_idx) == -1 then
+        if is_line_visible(line_idx, vscode_ranges) then
             for i = 1, #line_text do
                 if line_text:sub(i, i + 1) == needle and char_idx <= #CHARS then
                     local overlay_char = CHARS[char_idx]
