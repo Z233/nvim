@@ -20,16 +20,34 @@ function M.scrollHalfPageUp()
     await vscode.commands.executeCommand('editorScroll', { to: 'up', by: 'halfPage' });
     if (DEBUG) logger.info('[scrollHalfPageUp] editorScroll completed');
 
-    await vscode.commands.executeCommand('cursorMove', { to: 'viewPortCenter' });
-    if (DEBUG) logger.info('[scrollHalfPageUp] cursorMove completed');
-
     const editor = vscode.window.activeTextEditor;
     if (editor) {
-      const pos = editor.selection.active;
-      if (DEBUG) logger.info('[scrollHalfPageUp] position:', pos.line + 1, ':', pos.character);
-      return { line: pos.line + 1, character: pos.character };
+      // Use visibleRanges to find truly visible lines (excludes folded regions)
+      const visibleRanges = editor.visibleRanges;
+      let visibleLines = [];
+      for (const range of visibleRanges) {
+        for (let i = range.start.line; i <= range.end.line; i++) {
+          visibleLines.push(i);
+        }
+      }
+
+      if (visibleLines.length > 0) {
+        // Move cursor to the center of visible lines
+        const centerIndex = Math.floor(visibleLines.length / 2);
+        const targetLine = visibleLines[centerIndex];
+        const currentChar = editor.selection.active.character;
+
+        if (DEBUG) logger.info('[scrollHalfPageUp] visibleLines:', visibleLines.length, 'targetLine:', targetLine + 1);
+
+        // Set cursor position directly without using cursorMove command
+        const newPos = new vscode.Position(targetLine, currentChar);
+        editor.selection = new vscode.Selection(newPos, newPos);
+
+        if (DEBUG) logger.info('[scrollHalfPageUp] position:', targetLine + 1, ':', currentChar);
+        return { line: targetLine + 1, character: currentChar };
+      }
     }
-    if (DEBUG) logger.info('[scrollHalfPageUp] no active editor');
+    if (DEBUG) logger.info('[scrollHalfPageUp] no active editor or no visible lines');
     return null;
   ]], DEBUG))
 
@@ -41,7 +59,7 @@ function M.scrollHalfPageUp()
     end
   end
 
-  if result then
+  if result and type(result) == "table" and result.line then
     vim.api.nvim_win_set_cursor(0, { result.line, result.character })
   end
 end
@@ -59,16 +77,34 @@ function M.scrollHalfPageDown()
     await vscode.commands.executeCommand('editorScroll', { to: 'down', by: 'halfPage' });
     if (DEBUG) logger.info('[scrollHalfPageDown] editorScroll completed');
 
-    await vscode.commands.executeCommand('cursorMove', { to: 'viewPortCenter' });
-    if (DEBUG) logger.info('[scrollHalfPageDown] cursorMove completed');
-
     const editor = vscode.window.activeTextEditor;
     if (editor) {
-      const pos = editor.selection.active;
-      if (DEBUG) logger.info('[scrollHalfPageDown] position:', pos.line + 1, ':', pos.character);
-      return { line: pos.line + 1, character: pos.character };
+      // Use visibleRanges to find truly visible lines (excludes folded regions)
+      const visibleRanges = editor.visibleRanges;
+      let visibleLines = [];
+      for (const range of visibleRanges) {
+        for (let i = range.start.line; i <= range.end.line; i++) {
+          visibleLines.push(i);
+        }
+      }
+
+      if (visibleLines.length > 0) {
+        // Move cursor to the center of visible lines
+        const centerIndex = Math.floor(visibleLines.length / 2);
+        const targetLine = visibleLines[centerIndex];
+        const currentChar = editor.selection.active.character;
+
+        if (DEBUG) logger.info('[scrollHalfPageDown] visibleLines:', visibleLines.length, 'targetLine:', targetLine + 1);
+
+        // Set cursor position directly without using cursorMove command
+        const newPos = new vscode.Position(targetLine, currentChar);
+        editor.selection = new vscode.Selection(newPos, newPos);
+
+        if (DEBUG) logger.info('[scrollHalfPageDown] position:', targetLine + 1, ':', currentChar);
+        return { line: targetLine + 1, character: currentChar };
+      }
     }
-    if (DEBUG) logger.info('[scrollHalfPageDown] no active editor');
+    if (DEBUG) logger.info('[scrollHalfPageDown] no active editor or no visible lines');
     return null;
   ]], DEBUG))
 
@@ -80,7 +116,7 @@ function M.scrollHalfPageDown()
     end
   end
 
-  if result then
+  if result and type(result) == "table" and result.line then
     vim.api.nvim_win_set_cursor(0, { result.line, result.character })
   end
 end
