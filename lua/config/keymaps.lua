@@ -164,30 +164,6 @@ if vim.g.vscode then
   vim.keymap.set("n", "<C-u>", scroll.scrollHalfPageUp, { desc = "Scroll half page up, cursor centered" })
   vim.keymap.set("n", "<C-d>", scroll.scrollHalfPageDown, { desc = "Scroll half page down, cursor centered" })
 
-  -- Copy file path and line number to clipboard
-  local function copyFileLocation()
-    vscode.eval([[
-      const editor = vscode.window.activeTextEditor;
-      if (editor) {
-        const relativePath = vscode.workspace.asRelativePath(editor.document.uri);
-        const startLine = editor.selection.start.line + 1;
-        const endLine = editor.selection.end.line + 1;
-
-        let location;
-        if (startLine === endLine) {
-          location = `@${relativePath}#L${startLine}`;
-        } else {
-          location = `@${relativePath}#L${startLine}-${endLine}`;
-        }
-
-        await vscode.env.clipboard.writeText(location);
-        vscode.window.showInformationMessage('Copied: ' + location);
-        return location;
-      }
-      return null;
-    ]])
-  end
-
   -- Copy full absolute file path with line number to clipboard
   local function copyFileFullLocation()
     vscode.eval([[
@@ -235,7 +211,6 @@ if vim.g.vscode then
     end
   end
 
-  map({ "n", "x" }, "<leader>yf", copyFileLocation, { desc = "Copy file location to clipboard" })
-  map({ "n", "x" }, "<leader>yF", copyFileFullLocation, { desc = "Copy full file path to clipboard" })
+  map({ "n", "x" }, "<leader>yf", copyFileFullLocation, { desc = "Copy file location to clipboard" })
   map("n", "<leader>yc", copyLineCommitSha, { desc = "Copy line commit SHA to clipboard" })
 end
