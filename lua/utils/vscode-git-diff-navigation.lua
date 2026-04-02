@@ -19,7 +19,7 @@ local BOUNDS_CACHE_TTL = 2000 -- 2 seconds
 
 -- Get changed files using git command (Lua side)
 local function getChangedFilesFromGit()
-  local current_time = vim.loop.now()
+  local current_time = vim.uv.now()
 
   -- Return cached result if still valid
   if cached_files and (current_time - cache_timestamp) < CACHE_TTL then
@@ -27,7 +27,7 @@ local function getChangedFilesFromGit()
   end
 
   -- Get git root directory
-  local git_root = vim.fn.system("git rev-parse --show-toplevel 2>/dev/null"):gsub("%s+$", "")
+  local git_root = vim.fn.system({ "git", "rev-parse", "--show-toplevel" }):gsub("%s+$", "")
   if vim.v.shell_error ~= 0 then
     cached_files = {}
     cache_timestamp = current_time
@@ -35,8 +35,11 @@ local function getChangedFilesFromGit()
   end
 
   -- Get changed files (both staged and unstaged)
-  local cmd = "cd '" .. git_root .. "' && git diff --name-only HEAD && git diff --name-only --cached"
-  local output = vim.fn.system(cmd)
+  local output = vim.fn.system({ "git", "-C", git_root, "diff", "--name-only", "HEAD" })
+  local cached_output = vim.fn.system({ "git", "-C", git_root, "diff", "--name-only", "--cached" })
+  if vim.v.shell_error == 0 then
+    output = output .. cached_output
+  end
 
   if vim.v.shell_error ~= 0 then
     cached_files = {}
@@ -93,7 +96,7 @@ end
 
 -- Get first and last change line numbers for a file
 local function getFileChangeBounds(file_path)
-  local cmd = string.format("git diff HEAD '%s' 2>/dev/null", file_path)
+  local cmd = { "git", "diff", "HEAD", "--", file_path }
   local output = vim.fn.system(cmd)
 
   if vim.v.shell_error ~= 0 or output == "" then
@@ -138,7 +141,7 @@ end
 
 -- Get change bounds for all files with caching (batch optimized)
 local function getChangeBoundsForAllFiles(file_list)
-  local current_time = vim.loop.now()
+  local current_time = vim.uv.now()
 
   -- Return cached result if still valid
   if cached_bounds and (current_time - bounds_cache_timestamp) < BOUNDS_CACHE_TTL then
@@ -152,13 +155,19 @@ local function getChangeBoundsForAllFiles(file_list)
     return {}
   end
 
-  -- Build command with all files
-  local escaped_files = {}
-  for _, file in ipairs(file_list) do
-    table.insert(escaped_files, "'" .. file:gsub("'", "'\\''") .. "'")
+  -- Get git root once for path resolution
+  local git_root = vim.fn.system({ "git", "rev-parse", "--show-toplevel" }):gsub("%s+$", "")
+  if vim.v.shell_error ~= 0 then
+    cached_bounds = {}
+    bounds_cache_timestamp = current_time
+    return {}
   end
-  local files_arg = table.concat(escaped_files, " ")
-  local cmd = string.format("git diff -U0 HEAD %s 2>/dev/null", files_arg)
+
+  -- Build command with all files using list form
+  local cmd = { "git", "diff", "-U0", "HEAD", "--" }
+  for _, file in ipairs(file_list) do
+    table.insert(cmd, file)
+  end
   local output = vim.fn.system(cmd)
 
   if vim.v.shell_error ~= 0 or output == "" then
@@ -176,8 +185,7 @@ local function getChangeBoundsForAllFiles(file_list)
     -- Check for file header: +++ b/path/to/file
     local file_path = line:match("^%+%+%+ b/(.+)$")
     if file_path then
-      -- Convert relative path to absolute
-      local git_root = vim.fn.system("git rev-parse --show-toplevel 2>/dev/null"):gsub("%s+$", "")
+      -- Convert relative path to absolute using the git_root from above
       current_file = git_root .. "/" .. file_path
       current_line = nil
     elseif current_file then

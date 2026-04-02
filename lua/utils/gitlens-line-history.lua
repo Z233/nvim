@@ -123,7 +123,7 @@ local function pushToStack(context)
     file = context.file,
     line = context.line,
     sha = context.sha,
-    timestamp = vim.loop.now()
+    timestamp = vim.uv.now()
   })
 
   -- Enforce stack size limit (FIFO eviction)

@@ -2,19 +2,7 @@
 -- Default keymaps that are always set: https://github.com/LazyVim/LazyVim/blob/main/lua/lazyvim/config/keymaps.lua
 -- Add any additional keymaps here
 
-local function map(mode, lhs, rhs, opts)
-  local keys = require("lazy.core.handler").handlers.keys
-  ---@cast keys LazyKeysHandler
-  -- do not create the keymap if a lazy keys handler exists
-  if not keys.active[keys.parse({ lhs, mode = mode }).id] then
-    opts = opts or {}
-    opts.silent = opts.silent ~= false
-    if opts.remap and not vim.g.vscode then
-      opts.remap = nil
-    end
-    vim.keymap.set(mode, lhs, rhs, opts)
-  end
-end
+local map = vim.keymap.set
 
 map({ "n", "o", "x" }, "w", "<cmd>lua require('spider').motion('w')<CR>", { desc = "Spider-w" })
 map({ "n", "o", "x" }, "e", "<cmd>lua require('spider').motion('e')<CR>", { desc = "Spider-e" })
@@ -222,24 +210,15 @@ if vim.g.vscode then
     local file = vim.fn.expand("%:p")
 
     -- Use git blame to get the commit SHA for the current line
-    local cmd =
-      string.format("git blame -L %d,%d --porcelain '%s' 2>/dev/null | head -1 | cut -d' ' -f1", line, line, file)
-    local sha = vim.fn.system(cmd):gsub("%s+$", "")
+    local output = vim.fn.system({ "git", "blame", "-L", line .. "," .. line, "--porcelain", file })
+    local sha = output:match("^(%x+)")
 
     if sha and sha ~= "" and not sha:match("^0+$") then
-      vscode.eval(string.format(
-        [[
-        const sha = '%s';
-        await vscode.env.clipboard.writeText(sha);
-        vscode.window.showInformationMessage('Copied: ' + sha);
-        return sha;
-      ]],
-        sha
-      ))
+      vim.fn.setreg("+", sha)
+      vscode.call("editor.action.showHover") -- dismiss any existing hover
+      print("Copied: " .. sha)
     else
-      vscode.eval([[
-        vscode.window.showWarningMessage('No commit SHA found (line not committed yet)');
-      ]])
+      print("No commit SHA found (line not committed yet)")
     end
   end
 
