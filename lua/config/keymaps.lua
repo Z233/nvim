@@ -84,6 +84,41 @@ end
 map({ "n", "x" }, "<leader>yf", copyFilePath, { desc = "Copy file path to clipboard" })
 map({ "n", "x" }, "<leader>yl", copyFileWithLine, { desc = "Copy file location with line to clipboard" })
 
+-- LSP keymaps for non-VSCode environment
+-- LazyVim sets these via LSP on_attach, but we define them here as well
+-- for buffers where LSP attaches late or for manual invocation
+if not vim.g.vscode then
+  -- Diagnostic navigation
+  map("n", "]d", function()
+    vim.diagnostic.jump({ count = 1, float = true })
+  end, { desc = "Next Diagnostic" })
+  map("n", "[d", function()
+    vim.diagnostic.jump({ count = -1, float = true })
+  end, { desc = "Prev Diagnostic" })
+  map("n", "]e", function()
+    vim.diagnostic.jump({ count = 1, severity = vim.diagnostic.severity.ERROR, float = true })
+  end, { desc = "Next Error" })
+  map("n", "[e", function()
+    vim.diagnostic.jump({ count = -1, severity = vim.diagnostic.severity.ERROR, float = true })
+  end, { desc = "Prev Error" })
+
+  -- LSP navigation (these are also set by LazyVim on LSP attach, defined here as fallback)
+  map("n", "gD", vim.lsp.buf.declaration, { desc = "Goto Declaration" })
+  map("n", "gd", vim.lsp.buf.definition, { desc = "Goto Definition" })
+  map("n", "gI", vim.lsp.buf.implementation, { desc = "Goto Implementation" })
+  map("n", "gy", vim.lsp.buf.type_definition, { desc = "Goto Type Definition" })
+  map("n", "K", vim.lsp.buf.hover, { desc = "Hover" })
+  map("n", "gK", vim.lsp.buf.signature_help, { desc = "Signature Help" })
+  map("i", "<C-k>", vim.lsp.buf.signature_help, { desc = "Signature Help" })
+
+  -- LSP actions
+  map("n", "<leader>ca", vim.lsp.buf.code_action, { desc = "Code Action" })
+  map("n", "<leader>cr", vim.lsp.buf.rename, { desc = "Rename" })
+  map("n", "<leader>cf", function()
+    vim.lsp.buf.format({ async = true })
+  end, { desc = "Format" })
+end
+
 if vim.g.vscode then
   local vscode = require("vscode-neovim")
 
