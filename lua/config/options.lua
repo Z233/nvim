@@ -3,5 +3,6 @@
 -- Add any additional options here
 
 vim.opt.guifont = "Dank Mono:h15"
+vim.opt.clipboard = "unnamedplus"
 
 vim.cmd("language en_US.UTF-8")

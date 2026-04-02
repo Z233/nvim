@@ -31,7 +31,7 @@ map("n", "dH", "dg0", { desc = "Delete till line start" })
 map("n", "yH", "yg0", { desc = "Yank till line start" })
 
 local easy_motion = require("utils.easy-motion")
-vim.keymap.set({ 'n', 'x' }, 's', easy_motion.jump, { desc = 'Jump to 2 characters' })
+vim.keymap.set({ "n", "x" }, "s", easy_motion.jump, { desc = "Jump to 2 characters" })
 
 -- Stay in visual mode after indent
 vim.keymap.set("v", "<", "<gv")
@@ -59,14 +59,51 @@ map("n", "<C-l>", "<C-w>l", { desc = "Go to right window", remap = true })
 
 map({ "n", "v" }, "<leader>p", "<Cmd>ParseClipboardToPlainText<CR>p", { noremap = true, silent = true })
 
+-- Copy full absolute file path to clipboard (no line numbers)
+local function copyFilePath()
+  local file = vim.fn.expand("%:p")
+  file = string.format("@%s", file)
+  vim.fn.setreg("+", file)
+  print("Copied: " .. file)
+end
+
+-- Copy full absolute file path with line number to clipboard
+local function copyFileWithLine()
+  local file = vim.fn.expand("%:p")
+  local line_start = vim.fn.line("v")
+  local line_end = vim.fn.line(".")
+
+  local location
+  if vim.fn.mode() == "v" or vim.fn.mode() == "V" then
+    -- Visual mode: use selection range
+    if line_start > line_end then
+      line_start, line_end = line_end, line_start
+    end
+    if line_start == line_end then
+      location = string.format("@%s#L%d", file, line_start)
+    else
+      location = string.format("@%s#L%d-%d", file, line_start, line_end)
+    end
+  else
+    -- Normal mode: use current line
+    location = string.format("@%s#L%d", file, line_end)
+  end
+
+  vim.fn.setreg("+", location)
+  print("Copied: " .. location)
+end
+
+map({ "n", "x" }, "<leader>yf", copyFilePath, { desc = "Copy file path to clipboard" })
+map({ "n", "x" }, "<leader>yl", copyFileWithLine, { desc = "Copy file location with line to clipboard" })
+
 if vim.g.vscode then
   local vscode = require("vscode-neovim")
-  
+
   pcall(vim.keymap.del, "n", "]d")
   pcall(vim.keymap.del, "n", "[d")
   pcall(vim.keymap.del, "n", "]D")
   pcall(vim.keymap.del, "n", "[D")
-  
+
   -- VSCode specific keymap helper function
   local function vmap(mode, lhs, command, opts)
     opts = opts or {}
@@ -146,9 +183,24 @@ if vim.g.vscode then
 
   vmap("n", "<A-c>", "workbench.files.action.showActiveFileInExplorer")
   vmap("n", "gr", "editor.action.goToReferences", { desc = "Go to references" })
-  vmap({ "n", "v" }, "<leader>cl", "turboConsoleLog.displayLogMessage", { desc = "Turbo Console Log: Display Log Message" })
-  vmap({ "n", "v" }, "]l", "editor.action.marker.nextInFiles", { desc = "Go to Next Problem in Files (Error, Warning, Info)" })
-  vmap({ "n", "v" }, "[l", "editor.action.marker.prevInFiles", { desc = "Go to Previous Problem in Files (Error, Warning, Info)" })
+  vmap(
+    { "n", "v" },
+    "<leader>cl",
+    "turboConsoleLog.displayLogMessage",
+    { desc = "Turbo Console Log: Display Log Message" }
+  )
+  vmap(
+    { "n", "v" },
+    "]l",
+    "editor.action.marker.nextInFiles",
+    { desc = "Go to Next Problem in Files (Error, Warning, Info)" }
+  )
+  vmap(
+    { "n", "v" },
+    "[l",
+    "editor.action.marker.prevInFiles",
+    { desc = "Go to Previous Problem in Files (Error, Warning, Info)" }
+  )
 
   -- Folding
   vmap("n", "zM", "editor.foldAll", { desc = "Fold All" })
@@ -164,56 +216,26 @@ if vim.g.vscode then
   vim.keymap.set("n", "<C-u>", scroll.scrollHalfPageUp, { desc = "Scroll half page up, cursor centered" })
   vim.keymap.set("n", "<C-d>", scroll.scrollHalfPageDown, { desc = "Scroll half page down, cursor centered" })
 
-  -- Copy full absolute file path to clipboard (no line numbers)
-  local function copyFilePath()
-    local file = vim.fn.expand("%:p")
-    file = string.format("@%s", file)
-    vim.fn.setreg("+", file)
-    print("Copied: " .. file)
-  end
-
-  -- Copy full absolute file path with line number to clipboard
-  local function copyFileWithLine()
-    local file = vim.fn.expand("%:p")
-    local line_start = vim.fn.line("v")
-    local line_end = vim.fn.line(".")
-
-    local location
-    if vim.fn.mode() == "v" or vim.fn.mode() == "V" then
-      -- Visual mode: use selection range
-      if line_start > line_end then
-        line_start, line_end = line_end, line_start
-      end
-      if line_start == line_end then
-        location = string.format("@%s#L%d", file, line_start)
-      else
-        location = string.format("@%s#L%d-%d", file, line_start, line_end)
-      end
-    else
-      -- Normal mode: use current line
-      location = string.format("@%s#L%d", file, line_end)
-    end
-
-    vim.fn.setreg("+", location)
-    print("Copied: " .. location)
-  end
-
   -- Copy commit SHA of current line to clipboard
   local function copyLineCommitSha()
     local line = vim.fn.line(".")
     local file = vim.fn.expand("%:p")
 
     -- Use git blame to get the commit SHA for the current line
-    local cmd = string.format("git blame -L %d,%d --porcelain '%s' 2>/dev/null | head -1 | cut -d' ' -f1", line, line, file)
+    local cmd =
+      string.format("git blame -L %d,%d --porcelain '%s' 2>/dev/null | head -1 | cut -d' ' -f1", line, line, file)
     local sha = vim.fn.system(cmd):gsub("%s+$", "")
 
     if sha and sha ~= "" and not sha:match("^0+$") then
-      vscode.eval(string.format([[
+      vscode.eval(string.format(
+        [[
         const sha = '%s';
         await vscode.env.clipboard.writeText(sha);
         vscode.window.showInformationMessage('Copied: ' + sha);
         return sha;
-      ]], sha))
+      ]],
+        sha
+      ))
     else
       vscode.eval([[
         vscode.window.showWarningMessage('No commit SHA found (line not committed yet)');
@@ -221,7 +243,5 @@ if vim.g.vscode then
     end
   end
 
-  map({ "n", "x" }, "<leader>yf", copyFilePath, { desc = "Copy file path to clipboard" })
-  map({ "n", "x" }, "<leader>yl", copyFileWithLine, { desc = "Copy file location with line to clipboard" })
   map("n", "<leader>yc", copyLineCommitSha, { desc = "Copy line commit SHA to clipboard" })
 end

@@ -8,17 +8,21 @@ return {
     },
   },
   {
-    'nvim-mini/mini.ai',
+    "nvim-mini/mini.ai",
     opts = function()
       local ai = require("mini.ai")
-      
+
       -- Helpers for tag regions (self-closing + paired) using Tree-sitter
       local function _get_parser()
         local ts = vim.treesitter
         local ok, parser = pcall(ts.get_parser, vim.api.nvim_get_current_buf())
-        if not ok then return nil end
+        if not ok then
+          return nil
+        end
         local t = parser:parse()[1]
-        if not t then return nil end
+        if not t then
+          return nil
+        end
         return t:root()
       end
 
@@ -34,25 +38,27 @@ return {
 
       local _SELF_TYPES = {
         jsx_self_closing_element = true,
-        self_closing_tag = true,         -- html
-        xml_empty_element = true,        -- some xml grammars
+        self_closing_tag = true, -- html
+        xml_empty_element = true, -- some xml grammars
       }
 
       local _PAIRED_TYPES = {
         jsx_element = true,
-        element = true,                  -- html/xml
+        element = true, -- html/xml
       }
 
       local _ATTR_TYPES = {
         jsx_attribute = true,
         jsx_spread_attribute = true,
-        attribute = true,                -- html/xml
+        attribute = true, -- html/xml
       }
 
       local function _ascend_to_tag(node)
         while node do
           local t = node:type()
-          if _SELF_TYPES[t] or _PAIRED_TYPES[t] then return node end
+          if _SELF_TYPES[t] or _PAIRED_TYPES[t] then
+            return node
+          end
           -- If we're on an opening/start tag node, jump to its parent element
           if t == "jsx_opening_element" and node:parent() and node:parent():type() == "jsx_element" then
             return node:parent()
@@ -69,7 +75,9 @@ return {
         local first_attr, last_attr
         for child in elem:iter_children() do
           if _ATTR_TYPES[child:type()] then
-            if not first_attr then first_attr = child end
+            if not first_attr then
+              first_attr = child
+            end
             last_attr = child
           end
         end
@@ -80,11 +88,15 @@ return {
       -- 'i' = children for paired, attributes for self-closing
       local function any_tag_region(ai_type)
         local root = _get_parser()
-        if not root then return nil end
+        if not root then
+          return nil
+        end
         local cr, cc = _cursor_pos()
         local node = root:named_descendant_for_range(cr, cc, cr, cc)
         local elem = _ascend_to_tag(node)
-        if not elem then return nil end
+        if not elem then
+          return nil
+        end
 
         local t = elem:type()
         local sr, sc, er, ec = elem:range()
@@ -118,7 +130,7 @@ return {
               closing_tag = child
             end
           end
-          
+
           if opening_tag and closing_tag then
             local or1, oc1, or2, oc2 = opening_tag:range()
             local cr1, cc1, _, _ = closing_tag:range()
@@ -131,7 +143,7 @@ return {
 
         return nil
       end
-      
+
       return {
         n_lines = 500,
         custom_textobjects = {
@@ -141,33 +153,33 @@ return {
           }, {}),
           f = ai.gen_spec.treesitter({ a = "@function.outer", i = "@function.inner" }, {}),
           c = ai.gen_spec.treesitter({ a = "@class.outer", i = "@class.inner" }, {}),
-          t = function(ai_type)  -- any tag, paired or self-closing
+          t = function(ai_type) -- any tag, paired or self-closing
             return any_tag_region(ai_type)
           end,
           b = false,
           B = false,
         },
       }
-    end
+    end,
   },
   {
-    'vscode-neovim/vscode-multi-cursor.nvim',
-    event = 'VeryLazy',
+    "vscode-neovim/vscode-multi-cursor.nvim",
+    event = "VeryLazy",
     cond = not not vim.g.vscode,
     vscode = true,
     config = function(_, _)
-      require('vscode-multi-cursor').setup { -- Config is optional
+      require("vscode-multi-cursor").setup({ -- Config is optional
         -- Whether to set default mappings
         default_mappings = true,
         -- If set to true, only multiple cursors will be created without multiple selections
-        no_selection = false
-      }
+        no_selection = false,
+      })
     end,
   },
   {
     "chrisgrieser/nvim-spider",
     lazy = true,
-    vscode = true
+    vscode = true,
   },
   {
     "nvim-mini/mini.surround",
@@ -182,27 +194,27 @@ return {
           },
         },
         mappings = {
-          add = 'gza', -- Add surrounding in Normal and Visual modes
-          delete = 'gzd', -- Delete surrounding
-          find = 'gzf', -- Find surrounding (to the right)
-          find_left = 'gzF', -- Find surrounding (to the left)
-          highlight = 'gzh', -- Highlight surrounding
-          replace = 'gzr', -- Replace surrounding
-          update_n_lines = 'gzn', -- Update `n_lines`
+          add = "gza", -- Add surrounding in Normal and Visual modes
+          delete = "gzd", -- Delete surrounding
+          find = "gzf", -- Find surrounding (to the right)
+          find_left = "gzF", -- Find surrounding (to the left)
+          highlight = "gzh", -- Highlight surrounding
+          replace = "gzr", -- Replace surrounding
+          update_n_lines = "gzn", -- Update `n_lines`
 
-          suffix_last = 'l', -- Suffix to search with "prev" method
-          suffix_next = 'n', -- Suffix to search with "next" method
-        }
+          suffix_last = "l", -- Suffix to search with "prev" method
+          suffix_next = "n", -- Suffix to search with "next" method
+        },
       })
     end,
   },
   {
     "mattn/emmet-vim",
-    vscode = true
+    vscode = true,
   },
   {
     "tpope/vim-abolish",
-    vscode = true
+    vscode = true,
   },
   {
     "m4xshen/hardtime.nvim",
@@ -232,13 +244,22 @@ return {
             vue = js_default_log_template,
             jsx = js_default_log_template,
             tsx = js_default_log_template,
-          }
-        }
+          },
+        },
       })
-    end
+    end,
   },
   {
     "folke/flash.nvim",
-    enabled = false
-  }
+    enabled = false,
+  },
+  {
+    "kkew3/jieba.vim",
+    tag = "v1.0.5",
+    build = "./build.sh",
+    init = function()
+      vim.g.jieba_vim_lazy = 1
+      vim.g.jieba_vim_keymap = 1
+    end,
+  },
 }
