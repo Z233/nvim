@@ -1,0 +1,106 @@
+return {
+  {
+    "williamboman/mason.nvim",
+    cmd = "Mason",
+    cond = not vim.g.vscode,
+    opts = {},
+  },
+  {
+    "williamboman/mason-lspconfig.nvim",
+    cond = not vim.g.vscode,
+    dependencies = { "mason.nvim" },
+    opts = {
+      ensure_installed = {
+        "ts_ls",
+        "volar",
+        "lua_ls",
+        "jsonls",
+        "yamlls",
+      },
+    },
+  },
+  {
+    "neovim/nvim-lspconfig",
+    event = "BufRead",
+    cond = not vim.g.vscode,
+    dependencies = {
+      "mason.nvim",
+      "mason-lspconfig.nvim",
+    },
+    config = function()
+      local capabilities = vim.lsp.protocol.make_client_capabilities()
+
+      local ok, blink = pcall(require, "blink.cmp")
+      if ok then
+        capabilities = blink.get_lsp_capabilities(capabilities)
+      end
+
+      vim.api.nvim_create_autocmd("LspAttach", {
+        group = vim.api.nvim_create_augroup("lsp_keymaps", { clear = true }),
+        callback = function(ev)
+          local bufnr = ev.buf
+          local map = function(mode, lhs, rhs, desc)
+            vim.keymap.set(mode, lhs, rhs, { buffer = bufnr, desc = desc })
+          end
+
+          map("n", "gd", vim.lsp.buf.definition, "Goto Definition")
+          map("n", "gD", vim.lsp.buf.declaration, "Goto Declaration")
+          map("n", "gI", vim.lsp.buf.implementation, "Goto Implementation")
+          map("n", "gy", vim.lsp.buf.type_definition, "Goto Type Definition")
+          map("n", "gr", function()
+            local fzf_ok, fzf = pcall(require, "fzf-lua")
+            if fzf_ok then
+              fzf.lsp_references()
+            else
+              vim.lsp.buf.references()
+            end
+          end, "References")
+          map("n", "K", vim.lsp.buf.hover, "Hover")
+          map("n", "gK", vim.lsp.buf.signature_help, "Signature Help")
+          map("i", "<C-k>", vim.lsp.buf.signature_help, "Signature Help")
+
+          map("n", "<leader>ca", vim.lsp.buf.code_action, "Code Action")
+          map("n", "<leader>cr", vim.lsp.buf.rename, "Rename")
+          map("n", "<leader>cf", function()
+            vim.lsp.buf.format({ async = true })
+          end, "Format")
+
+          map("n", "]d", function()
+            vim.diagnostic.jump({ count = 1, float = true })
+          end, "Next Diagnostic")
+          map("n", "[d", function()
+            vim.diagnostic.jump({ count = -1, float = true })
+          end, "Prev Diagnostic")
+          map("n", "]e", function()
+            vim.diagnostic.jump({ count = 1, severity = vim.diagnostic.severity.ERROR, float = true })
+          end, "Next Error")
+          map("n", "[e", function()
+            vim.diagnostic.jump({ count = -1, severity = vim.diagnostic.severity.ERROR, float = true })
+          end, "Prev Error")
+        end,
+      })
+
+      local servers = {
+        ts_ls = {},
+        volar = {},
+        lua_ls = {
+          settings = {
+            Lua = {
+              workspace = { checkThirdParty = false },
+              telemetry = { enable = false },
+            },
+          },
+        },
+        jsonls = {},
+        yamlls = {},
+      }
+
+      for server, config in pairs(servers) do
+        config.capabilities = capabilities
+        vim.lsp.config(server, config)
+      end
+
+      vim.lsp.enable(vim.tbl_keys(servers))
+    end,
+  },
+}
