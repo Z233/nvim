@@ -12,7 +12,7 @@ return {
     opts = {
       ensure_installed = {
         "ts_ls",
-        "volar",
+        "vue_ls",
         "lua_ls",
         "jsonls",
         "yamlls",
@@ -82,7 +82,7 @@ return {
 
       local servers = {
         ts_ls = {},
-        volar = {},
+        vue_ls = {},
         lua_ls = {
           settings = {
             Lua = {
