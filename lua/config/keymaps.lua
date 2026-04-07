@@ -177,6 +177,8 @@ if vim.g.vscode then
   vmap("n", "<leader>gc", "merge-conflict.accept.current", { desc = "Merge Conflict: Accept Current" })
   vmap("n", "<leader>gb", "merge-conflict.accept.both", { desc = "Merge Conflict: Accept Both" })
   vmap({ "n", "v" }, "<leader>gt", "git.revertSelectedRanges", { desc = "Git: Revert Selected Ranges" })
+  vmap("v", "<leader>gs", "git.stageSelectedRanges", { desc = "Git: Stage Selected Ranges" })
+  vmap("v", "<leader>gu", "git.unstageSelectedRanges", { desc = "Git: Unstage Selected Ranges" })
 
   -- GitLens Revision Navigation
   vmap("n", "]r", "gitlens.diffWithNext", { desc = "GitLens: Diff with Next Revision" })
