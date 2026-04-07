@@ -1,14 +1,12 @@
--- Keymaps are automatically loaded on the VeryLazy event
--- Default keymaps that are always set: https://github.com/LazyVim/LazyVim/blob/main/lua/lazyvim/config/keymaps.lua
--- Add any additional keymaps here
-
 local map = vim.keymap.set
 
+-- Spider word motions
 map({ "n", "o", "x" }, "w", "<cmd>lua require('spider').motion('w')<CR>", { desc = "Spider-w" })
 map({ "n", "o", "x" }, "e", "<cmd>lua require('spider').motion('e')<CR>", { desc = "Spider-e" })
 map({ "n", "o", "x" }, "b", "<cmd>lua require('spider').motion('b')<CR>", { desc = "Spider-b" })
 map({ "n", "o", "x" }, "ge", "<cmd>lua require('spider').motion('ge')<CR>", { desc = "Spider-ge" })
 
+-- Line operations
 map("n", "cL", "cg_", { desc = "Change till line end" })
 map("n", "vL", "vg_", { desc = "Visual till line end" })
 map("n", "dL", "dg_", { desc = "Delete till line end" })
@@ -18,36 +16,45 @@ map("n", "vH", "vg0", { desc = "Visual till line start" })
 map("n", "dH", "dg0", { desc = "Delete till line start" })
 map("n", "yH", "yg0", { desc = "Yank till line start" })
 
+-- Easy motion
 local easy_motion = require("utils.easy-motion")
-vim.keymap.set({ "n", "x" }, "s", easy_motion.jump, { desc = "Jump to 2 characters" })
+map({ "n", "x" }, "s", easy_motion.jump, { desc = "Jump to 2 characters" })
 
 -- Stay in visual mode after indent
-vim.keymap.set("v", "<", "<gv")
-vim.keymap.set("v", ">", ">gv")
+map("v", "<", "<gv")
+map("v", ">", ">gv")
 
 -- Make U opposite of u (redo)
-vim.keymap.set("n", "U", "<C-r>", { desc = "Redo" })
+map("n", "U", "<C-r>", { desc = "Redo" })
 
 -- Powerful escape: clear highlights
-vim.keymap.set({ "i", "n" }, "<Esc>", function()
+map({ "i", "n" }, "<Esc>", function()
   vim.cmd("noh")
   return "<Esc>"
 end, { expr = true, desc = "Escape and clear hlsearch" })
 
--- Auto-mark before search: set mark 's' so you can jump back with `s
-vim.keymap.set("n", "/", "ms/", { desc = "Search forward (mark s)" })
-vim.keymap.set("n", "?", "ms?", { desc = "Search backward (mark s)" })
+-- Auto-mark before search
+map("n", "/", "ms/", { desc = "Search forward (mark s)" })
+map("n", "?", "ms?", { desc = "Search backward (mark s)" })
 
--- Move to window using the <ctrl> hjkl keys
-
+-- Window navigation
 map("n", "<C-h>", "<C-w>h", { desc = "Go to left window", remap = true })
 map("n", "<C-j>", "<C-w>j", { desc = "Go to lower window", remap = true })
 map("n", "<C-k>", "<C-w>k", { desc = "Go to upper window", remap = true })
 map("n", "<C-l>", "<C-w>l", { desc = "Go to right window", remap = true })
 
+-- Clipboard paste
+local function parse_clipboard_to_plain_text()
+  local clipboard_content = vim.fn.getreg("+")
+  local processed_content = clipboard_content:match("^%s*(.-)%s*$")
+  vim.fn.setreg("*", processed_content)
+  vim.fn.setreg("+", processed_content)
+end
+
+vim.api.nvim_create_user_command("ParseClipboardToPlainText", parse_clipboard_to_plain_text, {})
 map({ "n", "v" }, "<leader>p", "<Cmd>ParseClipboardToPlainText<CR>p", { noremap = true, silent = true })
 
--- Copy full absolute file path to clipboard (no line numbers)
+-- Copy file path
 local function copyFilePath()
   local file = vim.fn.expand("%:p")
   file = string.format("@%s", file)
@@ -55,7 +62,6 @@ local function copyFilePath()
   print("Copied: " .. file)
 end
 
--- Copy full absolute file path with line number to clipboard
 local function copyFileWithLine()
   local file = vim.fn.expand("%:p")
   local line_start = vim.fn.line("v")
@@ -63,7 +69,6 @@ local function copyFileWithLine()
 
   local location
   if vim.fn.mode() == "v" or vim.fn.mode() == "V" then
-    -- Visual mode: use selection range
     if line_start > line_end then
       line_start, line_end = line_end, line_start
     end
@@ -73,7 +78,6 @@ local function copyFileWithLine()
       location = string.format("@%s#L%d-%d", file, line_start, line_end)
     end
   else
-    -- Normal mode: use current line
     location = string.format("@%s#L%d", file, line_end)
   end
 
@@ -84,41 +88,8 @@ end
 map({ "n", "x" }, "<leader>yf", copyFilePath, { desc = "Copy file path to clipboard" })
 map({ "n", "x" }, "<leader>yl", copyFileWithLine, { desc = "Copy file location with line to clipboard" })
 
--- LSP keymaps for non-VSCode environment
--- LazyVim sets these via LSP on_attach, but we define them here as well
--- for buffers where LSP attaches late or for manual invocation
+-- Buffer navigation (non-VSCode only)
 if not vim.g.vscode then
-  -- Diagnostic navigation
-  map("n", "]d", function()
-    vim.diagnostic.jump({ count = 1, float = true })
-  end, { desc = "Next Diagnostic" })
-  map("n", "[d", function()
-    vim.diagnostic.jump({ count = -1, float = true })
-  end, { desc = "Prev Diagnostic" })
-  map("n", "]e", function()
-    vim.diagnostic.jump({ count = 1, severity = vim.diagnostic.severity.ERROR, float = true })
-  end, { desc = "Next Error" })
-  map("n", "[e", function()
-    vim.diagnostic.jump({ count = -1, severity = vim.diagnostic.severity.ERROR, float = true })
-  end, { desc = "Prev Error" })
-
-  -- LSP navigation (these are also set by LazyVim on LSP attach, defined here as fallback)
-  map("n", "gD", vim.lsp.buf.declaration, { desc = "Goto Declaration" })
-  map("n", "gd", vim.lsp.buf.definition, { desc = "Goto Definition" })
-  map("n", "gI", vim.lsp.buf.implementation, { desc = "Goto Implementation" })
-  map("n", "gy", vim.lsp.buf.type_definition, { desc = "Goto Type Definition" })
-  map("n", "K", vim.lsp.buf.hover, { desc = "Hover" })
-  map("n", "gK", vim.lsp.buf.signature_help, { desc = "Signature Help" })
-  map("i", "<C-k>", vim.lsp.buf.signature_help, { desc = "Signature Help" })
-
-  -- LSP actions
-  map("n", "<leader>ca", vim.lsp.buf.code_action, { desc = "Code Action" })
-  map("n", "<leader>cr", vim.lsp.buf.rename, { desc = "Rename" })
-  map("n", "<leader>cf", function()
-    vim.lsp.buf.format({ async = true })
-  end, { desc = "Format" })
-
-  -- Buffer navigation
   map("n", "gt", "<cmd>bnext<cr>", { desc = "Next Buffer" })
   map("n", "gT", "<cmd>bprev<cr>", { desc = "Prev Buffer" })
   map("n", "<leader>bb", "<cmd>e #<cr>", { desc = "Switch to Other Buffer" })
@@ -126,145 +97,7 @@ if not vim.g.vscode then
   map("n", "<leader>bo", "<cmd>%bd|e#|bd#<cr><c-o>", { desc = "Delete Other Buffers" })
 end
 
+-- VSCode keymaps
 if vim.g.vscode then
-  local vscode = require("vscode-neovim")
-
-  pcall(vim.keymap.del, "n", "]d")
-  pcall(vim.keymap.del, "n", "[d")
-  pcall(vim.keymap.del, "n", "]D")
-  pcall(vim.keymap.del, "n", "[D")
-
-  -- VSCode specific keymap helper function
-  local function vmap(mode, lhs, command, opts)
-    opts = opts or {}
-    opts.silent = opts.silent ~= false
-    vim.keymap.set(mode, lhs, function()
-      vscode.call(command)
-    end, opts)
-  end
-
-  -- #region Code Actions
-
-  vmap("n", "<leader>ef", "eslint.executeAutofix", { desc = "ESLint: Fix all auto-fixable Problems" })
-  vmap("v", "<leader>f", "editor.action.formatSelection", { desc = "Format selection" })
-  vmap("n", "gl", "editor.action.goToTypeDefinition", { desc = "Go to Type Definition" })
-  vmap("n", "<leader>cr", "editor.action.rename")
-  vmap("n", "<leader>cd", "comment-divider.insertSolidLine")
-  vmap("n", "<leader>cm", "comment-divider.makeMainHeader")
-
-  -- Complex VSCode functions that need direct vscode.call
-  local function goToImplementationAside()
-    vscode.call("editor.action.goToImplementation")
-    vscode.call("workbench.action.moveEditorToRightGroup")
-  end
-
-  local function goToTypeDefinitionAside()
-    vscode.call("editor.action.goToTypeDefinition")
-    vscode.call("workbench.action.moveEditorToRightGroup")
-  end
-
-  vmap("n", "gi", "editor.action.goToImplementation")
-  map("n", "<C-w>gi", goToImplementationAside)
-  map("n", "<C-w>gl", goToTypeDefinitionAside)
-
-  -- map("n", "<C-w>gd", '<Cmd>call VSCodeNotify("references-view.findReferences")<CR>')
-
-  -- #endregion
-
-  -- Git
-
-  vmap("n", "<leader>gi", "merge-conflict.accept.incoming", { desc = "Merge Conflict: Accept Incoming" })
-  vmap("n", "<leader>gc", "merge-conflict.accept.current", { desc = "Merge Conflict: Accept Current" })
-  vmap("n", "<leader>gb", "merge-conflict.accept.both", { desc = "Merge Conflict: Accept Both" })
-  vmap({ "n", "v" }, "<leader>gt", "git.revertSelectedRanges", { desc = "Git: Revert Selected Ranges" })
-  vmap("v", "<leader>gs", "git.stageSelectedRanges", { desc = "Git: Stage Selected Ranges" })
-  vmap("v", "<leader>gu", "git.unstageSelectedRanges", { desc = "Git: Unstage Selected Ranges" })
-
-  -- GitLens Revision Navigation
-  vmap("n", "]r", "gitlens.diffWithNext", { desc = "GitLens: Diff with Next Revision" })
-  vmap("n", "[r", "gitlens.diffWithPrevious", { desc = "GitLens: Diff with Previous Revision" })
-
-  -- GitLens Line-level Diff Navigation with History
-  local lineDiffHistory = require("utils.gitlens-line-history")
-
-  map("n", "[R", lineDiffHistory.goToPreviousRevision, { desc = "GitLens: Diff Line with Previous Revision" })
-  map("n", "]R", lineDiffHistory.goToNextRevision, { desc = "GitLens: Go Back in History" })
-
-  -- Dirty Diff / Changes
-
-  local gitDiff = require("utils.vscode-git-diff-navigation")
-
-  map("n", "]d", gitDiff.goToNextChange, { desc = "Go to Next Change" })
-  map("n", "[d", gitDiff.goToPreviousChange, { desc = "Go to Previous Change" })
-  map("n", "]gf", gitDiff.goToNextFile, { desc = "Go to Next Changed File" })
-  map("n", "[gf", gitDiff.goToPreviousFile, { desc = "Go to Previous Changed File" })
-  map("n", "<leader>go", gitDiff.openCurrentFileInNormalEditor, { desc = "Git: Open in Normal Editor" })
-  vmap("n", "]D", "editor.action.dirtydiff.next", { desc = "Show Next Change (inline diff)" })
-  vmap("n", "[D", "editor.action.dirtydiff.previous", { desc = "Show Previous Change (inline diff)" })
-
-  -- Error Navigation
-
-  vmap("n", "[e", "go-to-next-error.prev.error")
-  vmap("n", "]e", "go-to-next-error.next.error")
-
-  -- #region vscode-multi-cursor
-
-  map({ "n", "v" }, "gb", "mciw*<Cmd>nohl<CR>", { remap = true })
-
-  -- #endregion
-
-  vmap("n", "<A-c>", "workbench.files.action.showActiveFileInExplorer")
-  vmap("n", "gr", "editor.action.goToReferences", { desc = "Go to references" })
-  vmap(
-    { "n", "v" },
-    "<leader>cl",
-    "turboConsoleLog.displayLogMessage",
-    { desc = "Turbo Console Log: Display Log Message" }
-  )
-  vmap(
-    { "n", "v" },
-    "]l",
-    "editor.action.marker.nextInFiles",
-    { desc = "Go to Next Problem in Files (Error, Warning, Info)" }
-  )
-  vmap(
-    { "n", "v" },
-    "[l",
-    "editor.action.marker.prevInFiles",
-    { desc = "Go to Previous Problem in Files (Error, Warning, Info)" }
-  )
-
-  -- Folding
-  vmap("n", "zM", "editor.foldAll", { desc = "Fold All" })
-  vmap("n", "zR", "editor.unfoldAll", { desc = "Unfold All" })
-  vmap("n", "zc", "editor.fold", { desc = "Fold" })
-  vmap("n", "zC", "editor.foldRecursively", { desc = "Fold Recursively" })
-  vmap("n", "zo", "editor.unfold", { desc = "Unfold" })
-  vmap("n", "zO", "editor.unfoldRecursively", { desc = "Unfold Recursively" })
-  vmap("n", "za", "editor.toggleFold", { desc = "Toggle Fold" })
-
-  -- Half-page scroll with cursor centered
-  local scroll = require("utils.vscode-scroll")
-  vim.keymap.set("n", "<C-u>", scroll.scrollHalfPageUp, { desc = "Scroll half page up, cursor centered" })
-  vim.keymap.set("n", "<C-d>", scroll.scrollHalfPageDown, { desc = "Scroll half page down, cursor centered" })
-
-  -- Copy commit SHA of current line to clipboard
-  local function copyLineCommitSha()
-    local line = vim.fn.line(".")
-    local file = vim.fn.expand("%:p")
-
-    -- Use git blame to get the commit SHA for the current line
-    local output = vim.fn.system({ "git", "blame", "-L", line .. "," .. line, "--porcelain", file })
-    local sha = output:match("^(%x+)")
-
-    if sha and sha ~= "" and not sha:match("^0+$") then
-      vim.fn.setreg("+", sha)
-      vscode.call("editor.action.showHover") -- dismiss any existing hover
-      print("Copied: " .. sha)
-    else
-      print("No commit SHA found (line not committed yet)")
-    end
-  end
-
-  map("n", "<leader>yc", copyLineCommitSha, { desc = "Copy line commit SHA to clipboard" })
+  require("config.keymaps-vscode")
 end
