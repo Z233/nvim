@@ -119,19 +119,11 @@ if not vim.g.vscode then
   end, { desc = "Format" })
 
   -- Buffer navigation
-  map("n", "<S-h>", "<cmd>bprev<cr>", { desc = "Prev Buffer" })
-  map("n", "<S-l>", "<cmd>bnext<cr>", { desc = "Next Buffer" })
-  map("n", "[b", "<cmd>bprev<cr>", { desc = "Prev Buffer" })
-  map("n", "]b", "<cmd>bnext<cr>", { desc = "Next Buffer" })
+  map("n", "gt", "<cmd>bnext<cr>", { desc = "Next Buffer" })
+  map("n", "gT", "<cmd>bprev<cr>", { desc = "Prev Buffer" })
   map("n", "<leader>bb", "<cmd>e #<cr>", { desc = "Switch to Other Buffer" })
   map("n", "<leader>bd", "<cmd>bdelete<cr>", { desc = "Delete Buffer" })
   map("n", "<leader>bo", "<cmd>%bd|e#|bd#<cr><c-o>", { desc = "Delete Other Buffers" })
-
-  -- Tab navigation (native Vim gt/gT work, but add explicit mappings for clarity)
-  map("n", "<leader><tab>]", "<cmd>tabnext<cr>", { desc = "Next Tab" })
-  map("n", "<leader><tab>[", "<cmd>tabprev<cr>", { desc = "Prev Tab" })
-  map("n", "<leader><tab><tab>", "<cmd>tabnew<cr>", { desc = "New Tab" })
-  map("n", "<leader><tab>d", "<cmd>tabclose<cr>", { desc = "Close Tab" })
 end
 
 if vim.g.vscode then
