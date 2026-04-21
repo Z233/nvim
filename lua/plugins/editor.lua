@@ -177,6 +177,7 @@ return {
   {
     "m4xshen/hardtime.nvim",
     lazy = false,
+    cond = not vim.g.vscode,
     dependencies = { "MunifTanjim/nui.nvim" },
     opts = {},
   },

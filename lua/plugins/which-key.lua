@@ -8,6 +8,7 @@ return {
         { "<leader>b", group = "buffer" },
         { "<leader>y", group = "yank" },
         { "<leader>f", group = "find" },
+        { "<leader>g", group = "git" },
         { "gz", group = "surround" },
       },
     },

@@ -49,3 +49,13 @@ vim.opt.mouse = "a"
 -- Performance
 vim.opt.updatetime = 250
 vim.opt.timeoutlen = 300
+
+-- VSCode: suppress all messages to prevent output panel auto-opening
+if vim.g.vscode then
+  vim.notify = function() end
+end
+
+-- VSCode: suppress all messages to prevent output panel auto-opening
+if vim.g.vscode then
+  vim.notify = function() end
+end

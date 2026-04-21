@@ -3,6 +3,7 @@ return {
     "Goose97/timber.nvim",
     version = "*",
     event = "VeryLazy",
+    cond = not vim.g.vscode,
     config = function()
       local ts_fn_utils = require("utils.treesitter-function-name")
       local js_default_log_template = [[console.debug('[%function_name] %log_target', %log_target);]]
@@ -29,6 +30,7 @@ return {
     branch = "rust",
     build = "JIEBA_VIM_INSTALL_NVIM=1 ./build.sh",
     event = "BufRead",
+    cond = not vim.g.vscode,
     init = function()
       vim.g.jieba_vim_lazy = 1
       vim.g.jieba_vim_keymap = 1
