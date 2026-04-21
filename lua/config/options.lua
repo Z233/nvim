@@ -4,6 +4,10 @@ vim.g.mapleader = " "
 vim.g.maplocalleader = "\\"
 vim.g.user_emmet_leader_key = "<C-C>"
 
+-- Disable netrw (neo-tree replaces it)
+vim.g.loaded_netrw = 1
+vim.g.loaded_netrwPlugin = 1
+
 -- Encoding
 vim.cmd("language en_US.UTF-8")
 
