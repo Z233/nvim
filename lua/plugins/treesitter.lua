@@ -20,18 +20,8 @@ return {
         "yaml",
       }
 
-      local installed = require("nvim-treesitter.config").get_installed()
-      local installed_set = {}
-      for _, p in ipairs(installed) do
-        installed_set[p] = true
-      end
-
-      local to_install = vim.tbl_filter(function(p)
-        return not installed_set[p]
-      end, parsers)
-
-      if #to_install > 0 then
-        require("nvim-treesitter.install").install(to_install)
+      for _, p in ipairs(parsers) do
+        vim.cmd.TSInstall({ args = { p }, bang = true })
       end
 
       vim.treesitter.language.register("markdown", "mdx")
