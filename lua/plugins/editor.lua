@@ -179,6 +179,11 @@ return {
     lazy = false,
     cond = not vim.g.vscode,
     dependencies = { "MunifTanjim/nui.nvim" },
-    opts = {},
+    opts = {
+      resetting_keys = {
+        ["y"] = false,
+        ["Y"] = false,
+      },
+    },
   },
 }
