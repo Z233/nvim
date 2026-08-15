@@ -1,12 +1,16 @@
 return {
   {
-    "sharpchen/Eva-Theme.nvim",
+    "folke/tokyonight.nvim",
     lazy = false,
     priority = 1000,
-    build = ":EvaCompile",
     cond = not vim.g.vscode,
-    config = function()
-      vim.cmd.colorscheme("Eva-Light")
+    opts = {
+      style = "day",
+      terminal_colors = true,
+    },
+    config = function(_, opts)
+      require("tokyonight").setup(opts)
+      vim.cmd.colorscheme("tokyonight-day")
     end,
   },
 }
