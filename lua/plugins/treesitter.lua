@@ -53,17 +53,34 @@ return {
         yaml = "yaml",
       }
 
-      vim.api.nvim_create_autocmd("FileType", {
+      local function start_highlighting(buf)
+        if vim.bo[buf].buftype ~= "" then
+          return
+        end
+
+        local filetype = vim.bo[buf].filetype
+        if filetype == "" then
+          filetype = vim.filetype.match({ buf = buf }) or ""
+          if filetype ~= "" then
+            vim.bo[buf].filetype = filetype
+          end
+        end
+
+        local parser = filetype_to_parser[filetype]
+        if not parser or vim.treesitter.highlighter.active[buf] then
+          return
+        end
+
+        local ok = pcall(vim.treesitter.start, buf, parser)
+        if ok then
+          vim.bo[buf].indentexpr = "v:lua.require'nvim-treesitter'.indentexpr()"
+        end
+      end
+
+      vim.api.nvim_create_autocmd({ "BufEnter", "FileType" }, {
         group = vim.api.nvim_create_augroup("treesitter_highlight", { clear = true }),
         callback = function(ev)
-          local parser = filetype_to_parser[ev.match]
-          if not parser then
-            return
-          end
-          local ok = pcall(vim.treesitter.start, ev.buf, parser)
-          if ok then
-            vim.bo[ev.buf].indentexpr = "v:lua.require'nvim-treesitter'.indentexpr()"
-          end
+          start_highlighting(ev.buf)
         end,
       })
     end,
