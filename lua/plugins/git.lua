@@ -1,5 +1,30 @@
 return {
   {
+    "lewis6991/gitsigns.nvim",
+    cond = not vim.g.vscode,
+    event = { "BufReadPre", "BufNewFile" },
+    opts = {},
+  },
+  {
+    "dlyongemallo/diffview-plus.nvim",
+    cond = not vim.g.vscode,
+    version = "*",
+    cmd = {
+      "DiffviewOpen",
+      "DiffviewToggle",
+      "DiffviewFileHistory",
+      "DiffviewDiffFiles",
+      "DiffviewLog",
+      "DiffviewClose",
+    },
+    keys = {
+      { "<leader>gd", "<cmd>DiffviewOpen<cr>", desc = "Open Diffview" },
+      { "<leader>gh", "<cmd>DiffviewFileHistory %<cr>", desc = "File history" },
+      { "<leader>gq", "<cmd>DiffviewClose<cr>", desc = "Close Diffview" },
+    },
+    opts = {},
+  },
+  {
     "kdheepak/lazygit.nvim",
     cond = not vim.g.vscode,
     cmd = {
