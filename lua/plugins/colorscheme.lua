@@ -8,6 +8,17 @@ return {
       vim.o.background = "light"
       require("token").setup({
         terminal_colors = true,
+        plugins = {
+          blink = true,
+          diffview = true,
+          fzf = true,
+          gitsigns = true,
+          lazy = true,
+          mason = true,
+          neo_tree = true,
+          noice = true,
+          whichkey = true,
+        },
         on_colors = function(colors)
           local white = "#ffffff"
 
