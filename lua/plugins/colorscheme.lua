@@ -19,8 +19,9 @@ return {
           noice = true,
           whichkey = true,
         },
-        on_colors = function(colors)
-          colors.bg3 = "#ffffff"
+        on_highlights = function(highlights)
+          highlights.Normal.bg = "NONE"
+          highlights.NormalNC.bg = "NONE"
         end,
       })
       vim.cmd.colorscheme("token-temper")
