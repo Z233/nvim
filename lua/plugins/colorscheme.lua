@@ -1,25 +1,13 @@
 return {
   {
-    "folke/tokyonight.nvim",
+    "ThorstenRhau/token",
     lazy = false,
     priority = 1000,
     cond = not vim.g.vscode,
-    opts = {
-      style = "day",
-      terminal_colors = true,
-      on_colors = function(colors)
-        local white = "#ffffff"
-
-        colors.bg = white
-        colors.bg_sidebar = white
-        colors.bg_float = white
-        colors.bg_popup = white
-        colors.bg_statusline = white
-      end,
-    },
-    config = function(_, opts)
-      require("tokyonight").setup(opts)
-      vim.cmd.colorscheme("tokyonight-day")
+    config = function()
+      vim.o.background = "light"
+      require("token").setup()
+      vim.cmd.colorscheme("token-temper")
     end,
   },
 }
