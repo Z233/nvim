@@ -20,14 +20,7 @@ return {
           whichkey = true,
         },
         on_colors = function(colors)
-          local white = "#ffffff"
-
-          colors.bg0 = white
-          colors.bg1 = white
-          colors.bg2 = white
-          colors.bg3 = white
-          colors.bg4 = white
-          colors.bg5 = white
+          colors.bg3 = "#ffffff"
         end,
       })
       vim.cmd.colorscheme("token-temper")
