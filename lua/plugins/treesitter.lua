@@ -21,8 +21,7 @@ return {
       }
 
       -- Only install missing parsers
-      local info = require("nvim-treesitter.info")
-      local installed = info.installed_parsers()
+      local installed = require("nvim-treesitter").get_installed()
       local installed_set = {}
       for _, p in ipairs(installed) do
         installed_set[p] = true
