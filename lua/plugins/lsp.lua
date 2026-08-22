@@ -56,22 +56,33 @@ return {
             end
           end, "References")
           map("n", "K", vim.lsp.buf.hover, "Hover")
-          map("n", "<Esc>", function()
+          vim.keymap.set("n", "q", function()
             local noice_docs = package.loaded["noice.lsp.docs"]
-            if noice_docs then
-              noice_docs.hide(noice_docs.get("hover"))
-            end
-
+            local noice_hover = noice_docs and noice_docs._messages and noice_docs._messages.hover
+            local noice_open = noice_hover and noice_hover:win()
             local float_win = vim.b[bufnr].lsp_floating_preview
-            if
-              float_win
+            local native_open = float_win
               and vim.api.nvim_win_is_valid(float_win)
               and vim.api.nvim_win_get_config(float_win).relative ~= ""
-            then
-              vim.api.nvim_win_close(float_win, false)
+
+            if not noice_open and not native_open then
+              return "q"
             end
-            vim.cmd("noh")
-          end, "Close LSP hover")
+
+            vim.schedule(function()
+              if noice_open and noice_hover:win() then
+                noice_docs.hide(noice_hover)
+              end
+              if
+                native_open
+                and vim.api.nvim_win_is_valid(float_win)
+                and vim.api.nvim_win_get_config(float_win).relative ~= ""
+              then
+                vim.api.nvim_win_close(float_win, false)
+              end
+            end)
+            return ""
+          end, { buffer = bufnr, expr = true, desc = "Close LSP hover" })
           map("n", "gK", vim.lsp.buf.signature_help, "Signature Help")
           map("i", "<C-k>", vim.lsp.buf.signature_help, "Signature Help")
 
