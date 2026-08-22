@@ -56,6 +56,17 @@ return {
             end
           end, "References")
           map("n", "K", vim.lsp.buf.hover, "Hover")
+          map("n", "<Esc>", function()
+            local float_win = vim.b[bufnr].lsp_floating_preview
+            if
+              float_win
+              and vim.api.nvim_win_is_valid(float_win)
+              and vim.api.nvim_win_get_config(float_win).relative ~= ""
+            then
+              vim.api.nvim_win_close(float_win, false)
+            end
+            vim.cmd("noh")
+          end, "Close LSP hover")
           map("n", "gK", vim.lsp.buf.signature_help, "Signature Help")
           map("i", "<C-k>", vim.lsp.buf.signature_help, "Signature Help")
 
