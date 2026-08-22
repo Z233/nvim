@@ -33,6 +33,30 @@ autocmd("FileType", {
   end,
 })
 
+-- LSP multi-location jumps (gd/gD/gI/gy on nvim >= 0.11) open a persistent
+-- quickfix pane titled "LSP locations". Selecting an entry with <CR> keeps
+-- the builtin jump (.cc/.ll) and then closes the pane automatically.
+autocmd("BufWinEnter", {
+  group = augroup("lsp_locations_qf", { clear = true }),
+  callback = function(ev)
+    if vim.bo[ev.buf].buftype ~= "quickfix" then
+      return
+    end
+    local function select_entry()
+      local is_loc = vim.fn.win_gettype(0) == "locationlist"
+      local title = is_loc
+          and vim.fn.getloclist(0, { title = true }).title
+          or vim.w.quickfix_title
+      local close_pane = title == "LSP locations"
+      vim.cmd(is_loc and ".ll" or ".cc") -- builtin jump to entry under cursor
+      if close_pane and vim.fn.winnr("$") > 1 then
+        vim.cmd(is_loc and "lcl" or "ccl")
+      end
+    end
+    vim.keymap.set("n", "<CR>", select_entry, { buffer = ev.buf, desc = "Select location" })
+  end,
+})
+
 -- Restore cursor position on file open
 autocmd("BufReadPost", {
   group = augroup("restore_cursor", { clear = true }),
