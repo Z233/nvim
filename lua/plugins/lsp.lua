@@ -57,6 +57,11 @@ return {
           end, "References")
           map("n", "K", vim.lsp.buf.hover, "Hover")
           map("n", "<Esc>", function()
+            local noice_docs = package.loaded["noice.lsp.docs"]
+            if noice_docs then
+              noice_docs.hide(noice_docs.get("hover"))
+            end
+
             local float_win = vim.b[bufnr].lsp_floating_preview
             if
               float_win
