@@ -46,6 +46,12 @@ vim.opt.undofile = true
 vim.opt.wrap = false
 vim.opt.mouse = "a"
 
+-- Folding
+vim.opt.foldmethod = "expr"
+vim.opt.foldexpr = "v:lua.vim.treesitter.foldexpr()"
+vim.opt.foldenable = true
+vim.opt.foldlevel = 99
+
 -- Performance
 vim.opt.updatetime = 250
 vim.opt.timeoutlen = 300
