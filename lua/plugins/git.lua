@@ -6,23 +6,35 @@ return {
     opts = {},
   },
   {
-    "dlyongemallo/diffview-plus.nvim",
+    "esmuellert/codediff.nvim",
     cond = not vim.g.vscode,
     version = "*",
-    cmd = {
-      "DiffviewOpen",
-      "DiffviewToggle",
-      "DiffviewFileHistory",
-      "DiffviewDiffFiles",
-      "DiffviewLog",
-      "DiffviewClose",
-    },
+    cmd = "CodeDiff",
     keys = {
-      { "<leader>gd", "<cmd>DiffviewOpen<cr>", desc = "Open Diffview" },
-      { "<leader>gh", "<cmd>DiffviewFileHistory %<cr>", desc = "File history" },
-      { "<leader>gq", "<cmd>DiffviewClose<cr>", desc = "Close Diffview" },
+      { "<leader>gd", "<cmd>CodeDiff<cr>", desc = "Open CodeDiff" },
+      { "<leader>gh", "<cmd>CodeDiff history %<cr>", desc = "File history" },
+      {
+        "<leader>gq",
+        function()
+          require("codediff.ui.lifecycle").close()
+        end,
+        desc = "Close CodeDiff",
+      },
     },
-    opts = {},
+    opts = {
+      explorer = {
+        position = "left",
+        width = 36,
+        view_mode = "tree",
+        flatten_dirs = true,
+        initial_focus = "explorer",
+      },
+      diff = {
+        layout = "side-by-side",
+        compact = true,
+        compute_moves = false,
+      },
+    },
   },
   {
     "kdheepak/lazygit.nvim",
