@@ -41,6 +41,21 @@ vim.opt.sidescrolloff = 8
 vim.opt.smoothscroll = true
 
 -- Editing
+if vim.fn.has("mac") == 1 and not vim.g.vscode then
+  local osc52 = require("vim.ui.clipboard.osc52")
+  vim.g.clipboard = {
+    name = "OSC 52 copy with pbpaste",
+    copy = {
+      ["+"] = osc52.copy("+"),
+      ["*"] = osc52.copy("*"),
+    },
+    paste = {
+      ["+"] = { "pbpaste" },
+      ["*"] = { "pbpaste" },
+    },
+    cache_enabled = 0,
+  }
+end
 vim.opt.clipboard = "unnamedplus"
 vim.opt.undofile = true
 vim.opt.wrap = false
