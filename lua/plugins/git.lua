@@ -10,6 +10,7 @@ return {
     cond = not vim.g.vscode,
     version = "*",
     cmd = "CodeDiff",
+    dependencies = { "nvim-treesitter/nvim-treesitter" },
     keys = {
       { "<leader>gd", "<cmd>CodeDiff<cr>", desc = "Open CodeDiff" },
       { "<leader>gh", "<cmd>CodeDiff history %<cr>", desc = "File history" },
