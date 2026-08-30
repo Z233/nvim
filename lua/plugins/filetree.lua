@@ -91,8 +91,6 @@ return {
       },
 
       enable_cursor_hijack = true,
-      hide_root_node = true,
-      retain_hidden_root_indent = false,
       keep_altfile = true,
       open_files_in_last_window = true,
 
