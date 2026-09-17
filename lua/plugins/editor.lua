@@ -184,6 +184,10 @@ return {
         ["y"] = false,
         ["Y"] = false,
       },
+      disabled_filetypes = {
+        ["neo-tree"] = true,
+        ["codediff-explorer"] = true,
+      },
     },
   },
 }
