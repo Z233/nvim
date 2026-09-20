@@ -1,3 +1,22 @@
+local preview_config = { use_float = false, use_snacks_image = false, use_image_nvim = false }
+
+local function has_preview_window(state)
+  for _, win in ipairs(vim.api.nvim_list_wins()) do
+    if win ~= state.winid and vim.api.nvim_win_get_config(win).relative == "" then
+      return true
+    end
+  end
+  return false
+end
+
+local function toggle_preview(state)
+  if not has_preview_window(state) then
+    return
+  end
+  state.config = vim.tbl_extend("force", state.config or {}, preview_config)
+  require("neo-tree.sources.common.preview").toggle(state)
+end
+
 local function start_filesystem_preview(state)
   if not state or state.name ~= "filesystem" then
     return
@@ -123,14 +142,7 @@ return {
         mappings = {
           ["<CR>"] = "open",
           ["<2-LeftMouse>"] = "open",
-          ["P"] = {
-            "toggle_preview",
-            config = {
-              use_float = false,
-              use_snacks_image = false,
-              use_image_nvim = false,
-            },
-          },
+          ["P"] = toggle_preview,
           ["<C-f>"] = {
             "scroll_preview",
             config = { direction = -10 },
