@@ -18,7 +18,7 @@ return {
     },
     opts = {
       -- Route vim.ui.select (LSP multi-location jumps, code actions) through fzf
-      ui_select = true,
+      ui_select = {},
       defaults = {
         git_icons = false,
         file_icons = false,
