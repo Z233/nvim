@@ -80,6 +80,8 @@ return {
       "MunifTanjim/nui.nvim",
     },
     opts = {
+      -- The resize monitor never stops: every redraw starts another polling chain.
+      resize_timer_interval = -1,
       event_handlers = {
         {
           event = "after_render",
