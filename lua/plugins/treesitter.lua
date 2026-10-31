@@ -21,17 +21,7 @@ return {
         "yaml",
       }
 
-      -- Only install missing parsers
-      local installed = require("nvim-treesitter").get_installed("parsers")
-      local installed_set = {}
-      for _, p in ipairs(installed) do
-        installed_set[p] = true
-      end
-      for _, p in ipairs(parsers) do
-        if not installed_set[p] then
-          vim.cmd.TSInstall({ args = { p }, bang = true })
-        end
-      end
+      require("nvim-treesitter").install(parsers)
 
       vim.treesitter.language.register("markdown", "mdx")
 
@@ -67,7 +57,7 @@ return {
         end
 
         local parser = filetype_to_parser[filetype]
-        if not parser or vim.treesitter.highlighter.active[buf] then
+        if not parser then
           return
         end
 
