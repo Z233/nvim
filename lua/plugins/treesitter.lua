@@ -1,8 +1,9 @@
 return {
   {
     "nvim-treesitter/nvim-treesitter",
+    branch = "main",
     build = ":TSUpdate",
-    event = "BufRead",
+    lazy = false,
     cond = not vim.g.vscode,
     config = function()
       local parsers = {
