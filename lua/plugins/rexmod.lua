@@ -159,6 +159,13 @@ return {
     end,
   },
 
+  -- Markdown renders in the buffer: headings, lists, tables, code blocks.
+  {
+    "MeanderingProgrammer/render-markdown.nvim",
+    ft = { "markdown" },
+    opts = {},
+  },
+
   -- `<leader>cp` toggles a live preview of the markdown file in the browser.
   {
     "iamcco/markdown-preview.nvim",
